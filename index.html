@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý Hộ Kinh Doanh Nâng Cao</title>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <h3>📋 Hộ Kinh Doanh</h3>
+      <button onclick="document.getElementById('pdfInput').click()">➕ Thêm Hóa đơn</button>
+      <div id="businessList"></div>
+    </div>
+    <div class="main-content">
+      <div id="searchContainer">
+        <input id="searchInput" placeholder="Tìm hóa đơn, HKD, nhà cung cấp, MST...">
+        <div id="searchResults"></div>
+      </div>
+      <div>
+        <button onclick="showManualInvoiceForm()">📝 Hóa đơn Thủ công</button>
+        <button onclick="clearAllData()">🗑️ Xóa Dữ liệu</button>
+        <span>🔄 Tắt Trùng Hóa đơn: </span><span class="toggle-switch" id="duplicateToggle" onclick="toggleDuplicateCheck()"></span>
+        <input type="file" id="pdfInput" accept="application/pdf" multiple class="hidden">
+      </div>
+      <div id="manualInvoiceForm" class="manual-form hidden">
+        <h3>Tạo Hóa đơn Thủ công</h3>
+        <div>
+          <label>Loại hóa đơn:</label>
+          <select id="manualInvoiceType">
+            <option value="input">Nhập hàng</option>
+            <option value="output">Bán hàng</option>
+          </select>
+        </div>
+        <div>
+          <label>Ngày:</label>
+          <input type="date" id="manualInvoiceDate">
+        </div>
+        <div>
+          <label>Số hóa đơn:</label>
+          <input type="text" id="manualInvoiceNumber" placeholder="Số hóa đơn">
+        </div>
+        <div>
+          <label>Mã hóa đơn:</label>
+          <input type="text" id="manualInvoiceCode" placeholder="MCCQT (nếu có)">
+        </div>
+        <div id="manualInvoiceItems">
+          <h4>Danh sách sản phẩm</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Tên sản phẩm</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>Thuế suất</th><th>Thành tiền</th><th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="manualInvoiceItemsBody"></tbody>
+          </table>
+          <button onclick="addManualInvoiceItem()">➕ Thêm sản phẩm</button>
+        </div>
+        <div>
+          <button onclick="saveManualInvoice()">💾 Lưu Hóa đơn</button>
+          <button onclick="hideManualInvoiceForm()">❌ Hủy</button>
+        </div>
+      </div>
+      <div id="manualInventoryForm" class="manual-inventory-form hidden">
+        <h3>Thêm Tồn kho Thủ công</h3>
+        <div id="manualInventoryItems">
+          <h4>Danh sách sản phẩm</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Tên sản phẩm</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>Thuế suất</th><th>Thành tiền</th><th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="manualInventoryItemsBody"></tbody>
+          </table>
+          <button onclick="addManualInventoryItem()">➕ Thêm sản phẩm</button>
+        </div>
+        <div>
+          <button onclick="saveManualInventory()">💾 Lưu Tồn kho</button>
+          <button onclick="hideManualInventoryForm()">❌ Hủy</button>
+        </div>
+      </div>
+      <div id="invoices">
+        <h3>📅 Nhập Hóa đơn</h3>
+        <div id="status" class="hidden">Chưa xử lý</div>
+        <div id="invoiceInfo">📜 Thông tin hóa đơn sẽ hiển thị tại đây...</div>
+        <textarea id="pdfTextArea" class="hidden"></textarea>
+        <div id="tableResult"></div>
+        <div id="summary">
+          Tổng: <span id="totalQty">0</span> sản phẩm | Tổng số tiền: <span id="totalMoney">0</span><br/>
+          🟢 Tổng chiết khấu: <span id="totalDiscount">0</span><br/>
+          💵 Tổng sau chiết khấu: <span id="netTotal" contenteditable="true" oninput="manualNetEdit=true">0</span>
+        </div>
+      </div>
+      <div id="businessDetails" class="business-details">
+        <h4>Chi tiết Hộ Kinh Doanh</h4>
+        <div id="businessInfo"></div>
+        <div id="inventorySection">
+          <h4>Tồn kho</h4>
+          <div>
+            <label>Bộ lọc:</label>
+            <select id="inventoryFilterType">
+              <option value="day">Ngày</option>
+              <option value="month">Tháng</option>
+              <option value="quarter">Quý</option>
+              <option value="year">Năm</option>
+            </select>
+            <input type="date" id="inventoryFilterStart">
+            <input type="date" id="inventoryFilterEnd" class="hidden">
+            <button onclick="filterInventory()">🔍 Lọc</button>
+            <button onclick="exportInventoryToExcel()">📊 Xuất Excel</button>
+            <button onclick="showManualInventoryForm()">➕ Thêm Tồn kho Thủ công</button>
+          </div>
+          <div id="inventorySummary"></div>
+          <div id="inventoryWarnings"></div>
+          <div id="inventoryTable"></div>
+        </div>
+        <div id="latestInvoiceSection">
+          <button onclick="toggleLatestInvoice()">📄 Xem Hóa đơn Gần nhất</button>
+          <div id="latestInvoiceTable" class="toggle-section"></div>
+        </div>
+        <div id="invoiceHistorySection">
+          <h4>Lịch sử hóa đơn</h4>
+          <div id="invoiceHistory"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
