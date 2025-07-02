@@ -7,11 +7,12 @@
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
   <header class="header-total">
     <div class="control-bar">
-      <button onclick="showManualInvoiceForm()">➕ Hóa đơn thủ công</button>
       <button onclick="showManualInventoryForm()">➕ Tồn kho thủ công</button>
       <button onclick="exportInventoryToExcel()">📊 Xuất Excel Tồn kho</button>
       <button onclick="exportPriceListToExcel()">📊 Xuất Excel Bảng giá</button>
@@ -33,68 +34,72 @@
       <div id="invoiceInfo"></div>
       <div id="businessDetails">
         <h4>Chi tiết Hộ Kinh Doanh</h4>
-        
-        <!-- Tab Header -->
         <div class="tabs">
-          <button class="tab-button active" onclick="switchTab('lowStock')">Tồn kho sắp hết</button>
-          <button class="tab-button" onclick="switchTab('stockTable')">Bảng tồn kho</button>
-          <button class="tab-button" onclick="switchTab('invoiceList')">Danh sách hóa đơn</button>
-          <button class="tab-button" onclick="switchTab('priceList')">Bảng giá bán</button>
+          <button class="tab-button active" onclick="showTab('inventoryTab', this, selectedBusinessId)">Tồn kho</button>
+          <button class="tab-button" onclick="showTab('invoicesTab', this, selectedBusinessId)">Danh sách hóa đơn</button>
+          <button class="tab-button" onclick="showTab('priceListTab', this, selectedBusinessId)">Bảng giá bán</button>
+          <button class="tab-button" onclick="showTab('exportHistoryTab', this, selectedBusinessId)">Lịch sử xuất hàng</button>
+          <button class="tab-button" onclick="showTab('exportTab', this, selectedBusinessId)">Xuất hàng hóa</button>
         </div>
-
-        <!-- Tab Content -->
-        <div id="tab-lowStock" class="tab-content">
-          <p>⚠️ Chưa có dữ liệu. Vui lòng chọn Hộ Kinh Doanh.</p>
-        </div>
-        <div id="tab-stockTable" class="tab-content hidden"></div>
-        <div id="tab-invoiceList" class="tab-content hidden"></div>
-        <div id="tab-priceList" class="tab-content hidden"></div>
-      </div>
-
-      <div id="manualInvoiceForm" class="section hidden">
-        <h4>Nhập Hóa đơn Thủ công</h4>
-        <div class="section-content">
+        <div id="autoInvoiceTab" class="tab-content hidden">
+          <h2>📄 Xuất Hóa Đơn (Định dạng đúng chuẩn hệ thống)</h2>
           <div class="controls">
-            <select id="manualInvoiceType">
-              <option value="input">Nhập</option>
-              <option value="output">Xuất</option>
-            </select>
-            <input type="date" id="manualInvoiceDate">
-            <input type="text" id="manualInvoiceNumber" placeholder="Số hóa đơn">
-            <input type="text" id="manualInvoiceCode" placeholder="Mã hóa đơn">
+            <label>Số tiền mục tiêu (VND):</label>
+            <input type="number" id="targetAmount" min="1000" value="1000" onchange="validateTargetAmount()">
+            <button onclick="generateAutoInvoice(selectedBusinessId)">🎲 Tạo hóa đơn ngẫu nhiên</button>
+            <button onclick="saveAutoInvoice(selectedBusinessId)">💾 Xuất hóa đơn</button>
+            <button onclick="exportToExcel()">📤 Xuất hóa đơn (.xlsx)</button>
+            <button onclick="addRow()">➕ Thêm dòng</button>
           </div>
-          <table class="compact-table">
+          <table id="invoiceTable">
             <thead>
-              <tr>
-                <th>Tên hàng hóa</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>Thuế suất</th><th>Thành tiền</th><th>Thao tác</th>
-              </tr>
+              <tr id="headerRow"></tr>
             </thead>
-            <tbody id="manualInvoiceItemsBody"></tbody>
+            <tbody></tbody>
           </table>
-          <div class="controls">
-            <button onclick="addManualInvoiceItem()">➕ Thêm sản phẩm</button>
-            <button onclick="saveManualInvoice()">💾 Lưu</button>
-            <button onclick="hideManualInvoiceForm()">❌ Hủy</button>
-          </div>
+          <div id="autoInvoiceTotal">Tổng tiền: 0 VND</div>
         </div>
       </div>
-
+      <div id="autoInvoiceTab" class="tab-content hidden"></div> <!-- Thêm phần tử tab mới -->
+      <div id="inventoryTab" class="tab-content"></div>
+      <div id="invoicesTab" class="tab-content hidden">
+        <div class="filter-buttons">
+          <button onclick="filterInvoices('error')">Hóa đơn lỗi</button>
+          <button onclick="filterInvoices('zero')">Hóa đơn 0đ</button>
+          <button onclick="filterInvoices('all')">Tất cả</button>
+        </div>
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th>Mã hóa đơn</th>
+              <th>Khách hàng</th>
+              <th>Ngày</th>
+              <th>Tổng tiền</th>
+              <th>Hành động</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceList"></tbody>
+        </table>
+      </div>
+      <div id="priceListTab" class="tab-content"></div>
+      <div id="exportHistoryTab" class="tab-content hidden"></div>
+      <div id="exportTab" class="tab-content hidden"></div>
+      <div id="randomExportTab" class="tab-content hidden"></div> <!-- Thêm phần tử tab mới -->
+      <div id="invoiceDetails" class="section"></div>
       <div id="manualInventoryForm" class="section hidden">
         <h4>Nhập Tồn kho Thủ công</h4>
-        <div class="section-content">
-          <table class="compact-table">
-            <thead>
-              <tr>
-                <th>Tên hàng hóa</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>Thuế suất</th><th>Thành tiền</th><th>Thao tác</th>
-              </tr>
-            </thead>
-            <tbody id="manualInventoryItemsBody"></tbody>
-          </table>
-          <div class="controls">
-            <button onclick="addManualInventoryItem()">➕ Thêm sản phẩm</button>
-            <button onclick="saveManualInventory()">💾 Lưu</button>
-            <button onclick="hideManualInventoryForm()">❌ Hủy</button>
-          </div>
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th>Tên hàng hóa</th><th>Đơn vị</th><th>Số lượng</th><th>Đơn giá</th><th>Thuế suất</th><th>Thành tiền</th><th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="manualInventoryItemsBody"></tbody>
+        </table>
+        <div class="controls">
+          <button onclick="addManualInventoryItem()">➕ Thêm sản phẩm</button>
+          <button onclick="saveManualInventory()">💾 Lưu</button>
+          <button onclick="hideManualInventoryForm()">❌ Hủy</button>
         </div>
       </div>
 
@@ -103,23 +108,23 @@
   </div>
 
   <script>
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
-      document.getElementById('tab-' + tabId).classList.remove('hidden');
-      document.querySelector(`.tab-button[onclick*="${tabId}"]`).classList.add('active');
+    let selectedBusinessId = null;
+    function updateSelectedBusinessId(businessId) {
+      selectedBusinessId = businessId;
+      console.log('Selected business ID updated:', selectedBusinessId); // Debug
     }
 
-    // Hàm tắt form thủ công
-    function hideManualInvoiceForm() {
-      document.getElementById('manualInvoiceForm').classList.add('hidden');
-    }
-
-    function hideManualInventoryForm() {
-      document.getElementById('manualInventoryForm').classList.add('hidden');
-    }
+    // Đảm bảo hàm showTab được gọi khi click tab
+    document.addEventListener('DOMContentLoaded', () => {
+      updateBusinessList(); // Khởi tạo danh sách HKD
+      const tabs = document.querySelectorAll('.tab-button');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          showTab(tab.getAttribute('onclick').match(/showTab\('([^']+)'\)/)[1], tab, selectedBusinessId);
+        });
+      });
+    });
   </script>
-
   <script src="script.js"></script>
 </body>
 </html>

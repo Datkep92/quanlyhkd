@@ -16,7 +16,57 @@ body {
   line-height: 1.4;
   min-height: 100vh;
 }
+/* Giữ nguyên toàn bộ CSS hiện tại, không cần thay đổi vì chỉ liên quan đến giao diện tab đã ổn định */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+/* styles.css */
+.compact-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.compact-table th, .compact-table td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+.compact-table tr {
+    transition: background-color 0.3s;
+}
+.compact-table tr:hover {
+    background-color: #f5f5f5;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Arial', sans-serif;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.4;
+  min-height: 100vh;
+}
+/* styles.css */
+.compact-table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
+.compact-table th, .compact-table td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+.compact-table tr {
+    transition: background-color 0.3s;
+}
+.compact-table tr:hover {
+    background-color: #f5f5f5;
+}
 .header-total {
   position: fixed;
   top: 0;
@@ -45,7 +95,47 @@ body {
   margin-top: 40px; /* Chiều cao header */
   padding: 0;
 }
-
+/* Thêm hoặc thay thế trong <style> của index.html */
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.popup-content {
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+}
+.close-popup {
+    float: right;
+    cursor: pointer;
+}
+.compact-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.compact-table th, .compact-table td {
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: left;
+}
+.export-qty {
+    width: 60px;
+}
+#exportTotal {
+    margin-top: 10px;
+    font-weight: bold;
+}
 .sidebar {
   width: 250px;
   position: sticky;
@@ -333,6 +423,758 @@ button:hover, a[onclick]:hover {
   #pdfInput {
     width: 150px;
   }
+}
+/* Giữ nguyên phần cơ bản, thêm hiệu ứng hover nổi và viền HKD */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Arial', sans-serif;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #333;
+  font-size: 13px;
+  line-height: 1.4;
+  min-height: 100vh;
+}
+
+.header-total {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  z-index: 30;
+  padding: 5px 0;
+  border-bottom: 1px solid #ddd;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.control-bar {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.container {
+  display: flex;
+  gap: 12px;
+  margin-top: 40px;
+  padding: 0;
+}
+
+.sidebar {
+  width: 250px;
+  position: sticky;
+  top: 40px;
+  left: 0;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.sidebar ul {
+  list-style: none;
+}
+
+.sidebar li {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sidebar li.active,
+.sidebar li:hover {
+  background: #f0f0f0;
+  border-left: 4px solid #007bff;
+  padding-left: 6px;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.tabs {
+  position: fixed;
+  top: 40px;
+  left: 250px;
+  right: 0;
+  background: #fff;
+  z-index: 10;
+  padding: 5px 12px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 8px;
+}
+
+.tab-button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-button.active {
+  background: #007bff;
+  color: white;
+}
+
+.tab-button:hover {
+  background: #ececec;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f5f5f5;
+}
+
+.section-title:hover {
+  background: #ececec;
+}
+
+.section-title::after {
+  content: '▼';
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.section-title.active::after {
+  transform: rotate(180deg);
+}
+
+.section-content {
+  padding: 12px;
+  border-top: 1px solid #ddd;
+}
+
+.hidden {
+  display: none;
+}
+
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.compact-table th,
+.compact-table td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.compact-table th {
+  background: #f5f5f5;
+  font-weight: 500;
+}
+
+.compact-table th:nth-child(6),
+.compact-table td:nth-child(6) {
+  min-width: 80px;
+}
+
+.compact-table tr:hover {
+  background: #f9f9f9;
+}
+
+.compact-table tr.new-item {
+  background: #e6f3ff;
+  transition: background 2s;
+}
+
+.compact-table tr.editing {
+  background: #fff3e6;
+}
+
+button,
+a[onclick] {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover,
+a[onclick]:hover {
+  background: #ececec;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.controls select,
+.controls input {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.controls select:focus,
+.controls input:focus {
+  border-color: #999;
+  outline: none;
+}
+
+.summary {
+  margin: 8px 0;
+  font-size: 12px;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
+.warnings {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.warning { border-color: #ccc; }
+.success { border-color: #ccc; }
+
+#pdfInput,
+#searchInput {
+  width: 200px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+#status,
+#invoiceInfo,
+#searchResults {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.invoice-comparison {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.invoice-pdf,
+.invoice-details-table {
+  flex: 1;
+  min-width: 300px;
+}
+
+.invoice-pdf iframe {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow: auto;
+  position: relative;
+}
+
+.close-popup {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #ff4444;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.close-popup:hover {
+  background: #cc0000;
+}
+
+.export-qty {
+  width: 60px;
+}
+
+#exportTotal {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.compact-table button {
+  transition: all 0.2s ease;
+}
+
+.compact-table button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .header-total {
+    top: 0;
+    padding: 5px 0;
+    height: 40px;
+  }
+
+  .control-bar {
+    padding: 0 12px;
+  }
+
+  .sidebar {
+    width: 100%;
+    top: 40px;
+    max-height: calc(100vh - 40px);
+  }
+
+  .tabs {
+    top: 40px;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    padding: 5px 12px;
+    overflow-x: auto;
+  }
+
+  .main-content {
+    margin-top: 80px;
+  }
+
+  #pdfInput {
+    width: 150px;
+  }
+}
+.header-total {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  z-index: 30;
+  padding: 5px 0;
+  border-bottom: 1px solid #ddd;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.control-bar {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.container {
+  display: flex;
+  gap: 12px;
+  margin-top: 40px; /* Chiều cao header */
+  padding: 0;
+}
+/* Thêm hoặc thay thế trong <style> của index.html */
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.popup-content {
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+}
+.close-popup {
+    float: right;
+    cursor: pointer;
+}
+.compact-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.compact-table th, .compact-table td {
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: left;
+}
+.export-qty {
+    width: 60px;
+}
+#exportTotal {
+    margin-top: 10px;
+    font-weight: bold;
+}
+.sidebar {
+  width: 250px;
+  position: sticky;
+  top: 40px; /* Dưới header */
+  left: 0;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.tabs {
+  position: fixed;
+  top: 40px; /* Dưới header */
+  left: 250px; /* Rộng sidebar */
+  right: 0;
+  background: #fff;
+  z-index: 10;
+  padding: 5px 12px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 8px;
+}
+
+.tab-button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tab-button.active {
+  background: #007bff;
+  color: white;
+}
+
+.tab-button:hover {
+  background: #ececec;
+}
+
+.section {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.section-title {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f5f5f5;
+}
+
+.section-title:hover {
+  background: #ececec;
+}
+
+.section-title::after {
+  content: '▼';
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
+.section-title.active::after {
+  transform: rotate(180deg);
+}
+
+.section-content {
+  padding: 12px;
+  border-top: 1px solid #ddd;
+}
+
+.hidden {
+  display: none;
+}
+
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.compact-table th, .compact-table td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.compact-table th {
+  background: #f5f5f5;
+  font-weight: 500;
+}
+
+.compact-table th:nth-child(6), .compact-table td:nth-child(6) {
+  min-width: 80px;
+}
+
+.compact-table tr:hover {
+  background: #f9f9f9;
+}
+
+.compact-table tr.new-item {
+  background: #e6f3ff;
+  transition: background 2s;
+}
+
+.compact-table tr.editing {
+  background: #fff3e6;
+}
+
+button, a[onclick] {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover, a[onclick]:hover {
+  background: #ececec;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.controls select, .controls input {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.controls select:focus, .controls input:focus {
+  border-color: #999;
+  outline: none;
+}
+
+.summary {
+  margin: 8px 0;
+  font-size: 12px;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+}
+
+.warnings {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.warning { border-color: #ccc; }
+.success { border-color: #ccc; }
+
+#pdfInput, #searchInput {
+  width: 200px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+#status, #invoiceInfo, #searchResults {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.invoice-comparison {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.invoice-pdf, .invoice-details-table {
+  flex: 1;
+  min-width: 300px;
+}
+
+.invoice-pdf iframe {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow: auto;
+  position: relative;
+}
+
+.close-popup {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #ff4444;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.close-popup:hover {
+  background: #cc0000;
+}
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+  }
+
+  .header-total {
+    top: 0;
+    padding: 5px 0;
+    height: 40px;
+  }
+
+  .control-bar {
+    padding: 0 12px;
+  }
+
+  .sidebar {
+    width: 100%;
+    top: 40px;
+    max-height: calc(100vh - 40px);
+  }
+
+  .tabs {
+    top: 40px;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    padding: 5px 12px;
+    overflow-x: auto;
+  }
+
+  .main-content {
+    margin-top: 80px;
+  }
+
+  #pdfInput {
+    width: 150px;
+  }
+}
+.compact-table tr.error-row {
+  background-color: #ffdddd !important;
+}
+
+.compact-table tr.warning-row {
+  background-color: #fffacc !important;
 }
 
 /* Loại bỏ .fixed-header và .header-spacer dư thừa */
