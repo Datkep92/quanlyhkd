@@ -72,7 +72,9 @@ function getTodayDDMMYYYY() {
 }
 
 function calculateSellingPrice(basePrice) {
-    return normalizeNumber(basePrice) * (1 + 0.008) + 2000;
+    const base = normalizeNumber(basePrice);
+    const calculatedPrice = base * (1 + 0.008) + 2000;
+    return Math.ceil(calculatedPrice / 1000) * 1000;
 }
 
 
@@ -255,15 +257,15 @@ if (pdfInput) {
 
                 const info = extractInvoiceInfo(fullText);
                 if (info.mccqt === 'Không rõ') {
-                    alert(`Không tìm thấy mã MCCQT trong ${file.name}`);
+                   // alert(`Không tìm thấy mã MCCQT trong ${file.name}`);
                     continue;
                 }
                 if (!allowDuplicates && invoices.some(inv => inv.mccqt === info.mccqt)) {
-                    alert(`Hóa đơn với mã MCCQT ${info.mccqt} đã tồn tại`);
+                   // alert(`Hóa đơn với mã MCCQT ${info.mccqt} đã tồn tại`);
                     continue;
                 }
                 if (info.mstMua === 'Không rõ') {
-                    alert(`Không tìm thấy MST người mua trong ${file.name}`);
+                    //alert(`Không tìm thấy MST người mua trong ${file.name}`);
                     continue;
                 }
 
@@ -378,7 +380,7 @@ function updateInventory(businessId, item, direction) {
             invItem.discount = item.discount || '0';
             invItem.vat = vat;
             invItem.total = formatMoney(normalizeNumber(invItem.qty) * normalizeNumber(invItem.price));
-            invItem.giaBan = Math.ceil((normalizeNumber(invItem.price) * 1.08 + 2000) / 1000) * 1000;
+            invItem.giaBan = calculateSellingPrice(normalizeNumber(invItem.price)); // Cập nhật logic
             invItem.lastUpdated = new Date().toISOString();
             if (invItem.qty <= 0) {
                 inventory = inventory.filter(i => i.id !== invItem.id);
@@ -397,7 +399,7 @@ function updateInventory(businessId, item, direction) {
                 discount: item.discount || '0',
                 vat: vat,
                 total: formatMoney(qtyChange * normalizeNumber(item.price)),
-                giaBan: Math.ceil((basePrice * 1.08 + 2000) / 1000) * 1000,
+                giaBan: calculateSellingPrice(basePrice), // Cập nhật logic
                 lastUpdated: new Date().toISOString()
             });
         }
@@ -1142,29 +1144,53 @@ function checkInvoice(invoice) {
 // =============================================
 // 7. QUẢN LÝ XUẤT HÀNG (EXPORT)
 // =============================================
-function validateTargetAmount() {
+// =============================================
+// 7. QUẢN LÝ XUẤT HÀNG (EXPORT) - Sửa lại toàn bộ
+// =============================================
+function randomCustomerName() {
+    const firstNames = ['Nguyễn Văn', 'Trần Thị', 'Lê Văn', 'Phạm Thị', 'Hoàng Văn'];
+    const lastNames = ['An', 'Bình', 'Cường', 'Đạt', 'Hùng'];
+    return `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+}
+
+function randomAddressNinhThuan() {
+    const wards = ['Phường Đài Sơn', 'Phường Phước Mỹ', 'Xã Thành Hải', 'Xã Vĩnh Hải'];
+    const districts = ['Thành phố Phan Rang - Tháp Chàm', 'Huyện Ninh Phước', 'Huyện Ninh Sơn'];
+    const ward = wards[Math.floor(Math.random() * wards.length)];
+    const district = districts[Math.floor(Math.random() * districts.length)];
+    return `${ward}, ${district}, Tỉnh Ninh Thuận`;
+}
+
+function validateTargetAmount(businessId) {
     try {
         const amountInput = document.getElementById('targetAmount');
         if (!amountInput) return;
+        let value = normalizeNumber(amountInput.value);
         const minAmount = 1000;
-        if (normalizeNumber(amountInput.value) < minAmount) {
+        if (value < minAmount) {
             amountInput.value = minAmount;
+            value = minAmount;
+        }
+        // Cập nhật lại danh sách nếu đang hiển thị
+        if (document.getElementById('exportItemsBodyContent') || document.getElementById('autoInvoiceItemsBody')) {
+            generateExportItems(businessId); // Tái tạo danh sách với giá trị mới
         }
     } catch (e) {
         console.error('Lỗi validateTargetAmount:', e);
     }
 }
 
-function generateAutoInvoice(businessId) {
+function generateExportItems(businessId) {
     try {
-        const tbody = document.getElementById('autoInvoiceItemsBody');
+        const tbody = document.getElementById('exportItemsBodyContent');
         if (!tbody) {
-            console.error('Không tìm thấy #autoInvoiceItemsBody trong DOM');
+            console.error('Không tìm thấy #exportItemsBodyContent trong DOM');
             return;
         }
         const inv = inventory.filter(i => i.businessId === businessId && normalizeNumber(i.qty) > 0 && normalizeNumber(i.price) > 0);
         if (inv.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8">Không có sản phẩm để xuất.</td></tr>';
+            updateExportTotal(businessId);
             return;
         }
 
@@ -1175,89 +1201,100 @@ function generateAutoInvoice(businessId) {
 
         let totalAmount = 0;
         const items = [];
-        const availableItems = [...inv].sort((a, b) => calculateSellingPrice(b.price) - calculateSellingPrice(a.price));
+        const availableItems = [...inv].sort((a, b) => calculateSellingPrice(normalizeNumber(b.price)) - calculateSellingPrice(normalizeNumber(a.price)));
 
         while (availableItems.length > 0 && totalAmount < maxAmount) {
             const item = availableItems[0];
             const maxQty = normalizeNumber(item.qty);
-            const sellingPrice = calculateSellingPrice(item.price);
+            const sellingPrice = calculateSellingPrice(normalizeNumber(item.price));
             const qty = Math.min(Math.floor((maxAmount - totalAmount) / sellingPrice), maxQty);
-            if (qty > 0) {
-                const itemTotal = qty * sellingPrice;
-                items.push({ ...item, qty, sellingPrice, itemTotal });
-                totalAmount += itemTotal;
+            if (qty > 0 && totalAmount + (qty * sellingPrice) <= maxAmount) {
+                items.push({ ...item, qty, sellingPrice, itemTotal: qty * sellingPrice });
+                totalAmount += qty * sellingPrice;
                 availableItems.shift();
             } else {
-                break;
+                availableItems.shift();
             }
         }
 
-        if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8">Không thể tạo hóa đơn với số tiền mục tiêu.</td></tr>';
-            return;
+        if (items.length === 0 || totalAmount < minAmount) {
+            tbody.innerHTML = '<tr><td colspan="8">Không thể tạo danh sách với số tiền mục tiêu.</td></tr>';
+        } else {
+            tbody.innerHTML = items.map((item, index) => `
+                <tr data-item-id="${item.id}">
+                    <td><input type="checkbox" class="export-checkbox" checked onchange="updateExportTotal('${businessId}')"></td>
+                    <td>${item.name}</td>
+                    <td>${item.unit}</td>
+                    <td>${item.qty}</td>
+                    <td><input type="number" class="export-qty" value="${item.qty}" min="1" max="${item.qty}" onchange="updateExportTotal('${businessId}')"></td>
+                    <td>${formatMoney(item.sellingPrice)} VND</td>
+                    <td><span class="export-total">${formatMoney(item.itemTotal)} VND</span></td>
+                    <td><button onclick="removeExportItem('${item.id}', '${businessId}')">❌</button></td>
+                </tr>
+            `).join('');
         }
-
-        tbody.innerHTML = items.map((item, index) => `
-            <tr data-item-id="${item.id}">
-                <td><input type="checkbox" class="export-checkbox" checked onchange="updateAutoInvoiceTotal('${businessId}')"></td>
-                <td>${item.name}</td>
-                <td>${item.unit}</td>
-                <td>${item.qty}</td>
-                <td><input type="number" class="auto-qty" value="${item.qty}" min="1" max="${item.qty}" onchange="updateAutoInvoiceTotal('${businessId}')"></td>
-                <td>${item.sellingPrice.toLocaleString('vi-VN')} VND</td>
-                <td><span class="auto-total">${item.itemTotal.toLocaleString('vi-VN')} VND</span></td>
-                <td><button onclick="removeAutoInvoiceItem('${item.id}')">❌</button></td>
-            </tr>
-        `).join('');
-        updateAutoInvoiceTotal(businessId);
+        updateExportTotal(businessId);
     } catch (e) {
-        console.error('Lỗi generateAutoInvoice:', e);
-        alert('Lỗi khi tạo hóa đơn: ' + e.message);
+        console.error('Lỗi generateExportItems:', e);
+        alert('Lỗi khi tạo danh sách xuất: ' + e.message);
     }
 }
 
-function updateAutoInvoiceTotal(businessId) {
+function updateExportTotal(businessId) {
     try {
-        const tbody = document.getElementById('autoInvoiceItemsBody');
+        const tbody = document.getElementById('exportItemsBodyContent');
         if (!tbody) {
-            console.error('Không tìm thấy #autoInvoiceItemsBody trong DOM');
+            console.error('Không tìm thấy #exportItemsBodyContent trong DOM');
             return;
         }
         let total = 0;
         Array.from(tbody.querySelectorAll('tr')).forEach(row => {
             const checkbox = row.querySelector('.export-checkbox');
-            const qtyInput = row.querySelector('.auto-qty');
+            const qtyInput = row.querySelector('.export-qty');
             if (checkbox && qtyInput && checkbox.checked) {
                 const qty = normalizeNumber(qtyInput.value) || 0;
+                const maxQty = normalizeNumber(row.cells[3].innerText);
+                if (qty > maxQty) {
+                    qtyInput.value = maxQty;
+                }
                 const price = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
-                const totalCell = row.querySelector('.auto-total');
-                totalCell.innerText = `${(qty * price).toLocaleString('vi-VN')} VND`;
+                const totalCell = row.querySelector('.export-total');
+                totalCell.innerText = `${formatMoney(qty * price)} VND`;
                 total += qty * price;
             } else {
-                row.querySelector('.auto-total').innerText = '0 VND';
+                row.querySelector('.export-total').innerText = '0 VND';
             }
         });
-        const autoInvoiceTotal = document.getElementById('autoInvoiceTotal');
-        if (autoInvoiceTotal) {
-            autoInvoiceTotal.innerText = `Tổng tiền: ${total.toLocaleString('vi-VN')} VND`;
+        const exportTotal = document.getElementById('exportTotal');
+        if (exportTotal) {
+            exportTotal.innerText = `Tổng tiền: ${formatMoney(total)} VND`;
         }
     } catch (e) {
-        console.error('Lỗi updateAutoInvoiceTotal:', e);
+        console.error('Lỗi updateExportTotal:', e);
     }
 }
 
-function removeAutoInvoiceItem(itemId) {
-    const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
-    if (row) row.remove();
-    updateAutoInvoiceTotal('BUS1');
+function removeExportItem(itemId, businessId) {
+    try {
+        const tbody = document.getElementById('exportItemsBodyContent');
+        if (!tbody) {
+            console.error('Không tìm thấy #exportItemsBodyContent trong DOM');
+            return;
+        }
+        const row = tbody.querySelector(`tr[data-item-id="${itemId}"]`);
+        if (row) row.remove();
+        updateExportTotal(businessId);
+    } catch (e) {
+        console.error('Lỗi removeExportItem:', e);
+    }
 }
 
-function saveAutoInvoice(businessId) {
+function saveExport(businessId) {
     try {
-        const tbody = document.getElementById('autoInvoiceItemsBody');
+        const tbody = document.getElementById('exportItemsBodyContent');
         if (!tbody || tbody.querySelectorAll('tr').length === 0) {
-            console.error('Không tìm thấy #autoInvoiceItemsBody hoặc bảng trống');
-            alert('Vui lòng tạo bảng hóa đơn trước khi xuất!');
+            console.error('Không tìm thấy #exportItemsBodyContent hoặc bảng trống');
+            alert('Vui lòng tạo danh sách xuất trước khi lưu!');
             return;
         }
 
@@ -1266,10 +1303,10 @@ function saveAutoInvoice(businessId) {
             const checkbox = row.querySelector('.export-checkbox');
             const itemId = row.getAttribute('data-item-id');
             const item = inventory.find(i => i.id === itemId && i.businessId === businessId);
-            const qtyInput = row.querySelector('.auto-qty');
+            const qtyInput = row.querySelector('.export-qty');
             const qty = normalizeNumber(qtyInput?.value) || 0;
             const sellingPrice = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
-            const totalCell = row.querySelector('.auto-total');
+            const totalCell = row.querySelector('.export-total');
 
             if (item && checkbox && checkbox.checked && qty > 0) {
                 if (qty > normalizeNumber(item.qty)) {
@@ -1293,13 +1330,338 @@ function saveAutoInvoice(businessId) {
         }
 
         const grandTotal = items.reduce((sum, item) => sum + normalizeNumber(item.total), 0);
+        const exportRecord = {
+            id: generateUUID(),
+            businessId,
+            exportCode: 'EXP-' + Date.now(),
+            exportDate: new Date().toISOString(),
+            items,
+            grandTotal: grandTotal.toString()
+        };
+
+        exportedInvoices.push(exportRecord);
+        localStorage.setItem('exportedInvoices', JSON.stringify(exportedInvoices));
+
+        items.forEach(item => {
+            const invItem = inventory.find(i => i.id === item.id && i.businessId === businessId);
+            if (invItem) {
+                invItem.qty = (normalizeNumber(invItem.qty) - normalizeNumber(item.qty)).toString();
+                invItem.lastUpdated = new Date().toISOString();
+                if (normalizeNumber(invItem.qty) <= 0) {
+                    inventory = inventory.filter(i => i.id !== invItem.id);
+                }
+            }
+        });
+        localStorage.setItem('inventory', JSON.stringify(inventory));
+
+        // Xuất file Excel sau khi lưu thành công
+        const rows = [headers];
+        const customerNameInput = document.getElementById('customerName')?.value || randomCustomerName();
+        const customerAddressInput = document.getElementById('customerAddress')?.value || randomAddressNinhThuan();
+        let excelGrandTotal = 0;
+
+        // Dòng đầu tiên: Thông tin khách hàng và sản phẩm đầu tiên + TongCong
+        const headerRow = Array(headers.length).fill('');
+        headerRow[0] = 1; // STT
+        headerRow[1] = getTodayDDMMYYYY(); // NgayHoaDon
+        headerRow[2] = `KH${Math.floor(Math.random() * 1000) + 1000}`; // MaKhachHang
+        headerRow[3] = customerNameInput; // TenKhachHang
+        headerRow[4] = customerNameInput; // TenNguoiMua
+        headerRow[6] = customerAddressInput; // DiaChiKhachHang
+        headerRow[10] = 'TM'; // HinhThucTT
+        if (items.length > 0) {
+            headerRow[11] = items[0].id; // MaSanPham
+            headerRow[12] = items[0].name; // SanPham
+            headerRow[13] = items[0].unit; // DonViTinh
+            headerRow[16] = items[0].qty; // SoLuong
+            headerRow[17] = parseInt(items[0].price); // DonGia (số nguyên)
+            headerRow[20] = parseInt(items[0].total); // ThanhTien (số nguyên)
+            excelGrandTotal += parseInt(items[0].total);
+        }
+        headerRow[26] = parseInt(grandTotal); // TongCong (số nguyên)
+        headerRow[28] = 'VND'; // DonViTienTe
+        headerRow[55] = 'mau_01'; // mau_01
+        rows.push(headerRow);
+
+        // Các dòng tiếp theo: Thông tin sản phẩm
+        items.forEach((item, index) => {
+            const rowData = Array(headers.length).fill('');
+            rowData[0] = index + 2; // STT
+            rowData[1] = getTodayDDMMYYYY(); // NgayHoaDon
+            rowData[2] = `KH${Math.floor(Math.random() * 1000) + 1000}`; // MaKhachHang
+            rowData[10] = 'TM'; // HinhThucTT
+            rowData[11] = item.id; // MaSanPham
+            rowData[12] = item.name; // SanPham
+            rowData[13] = item.unit; // DonViTinh
+            rowData[16] = item.qty; // SoLuong
+            rowData[17] = parseInt(item.price); // DonGia (số nguyên)
+            rowData[20] = parseInt(item.total); // ThanhTien (số nguyên)
+            rowData[26] = parseInt(item.total); // TongCong (số nguyên)
+            rowData[28] = 'VND'; // DonViTienTe
+            rowData[55] = 'mau_01'; // mau_01
+            rows.push(rowData);
+            excelGrandTotal += parseInt(item.total); // Cộng dồn tổng
+        });
+
+        // Đảm bảo TongCong dòng đầu tiên khớp với tổng thực tế
+        rows[0][26] = parseInt(excelGrandTotal);
+
+        if (rows.length <= 1) {
+            alert('Không có dữ liệu để xuất!');
+            return;
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
+        XLSX.writeFile(wb, `HoaDonXuat_${businessId}_${Date.now()}.xlsx`);
+
+        document.getElementById('exportTab').innerHTML = '';
+        alert('Xuất hàng hóa, lưu lịch sử và xuất file Excel thành công!');
+    } catch (e) {
+        console.error('Lỗi saveExport:', e);
+        if (e.message !== 'Số lượng xuất không hợp lệ') {
+            alert('Lỗi khi xuất hàng hóa: ' + e.message);
+        }
+    }
+}
+
+function exportToExcel(businessId) {
+    try {
+        const tbody = document.getElementById('exportItemsBodyContent');
+        if (!tbody || tbody.querySelectorAll('tr').length === 0) {
+            console.error('Không tìm thấy #exportItemsBodyContent hoặc bảng trống');
+            alert('Vui lòng tạo danh sách xuất trước khi xuất Excel!');
+            return;
+        }
+
+        const rows = [headers];
+        const customerNameInput = document.getElementById('customerName')?.value || randomCustomerName();
+        const customerAddressInput = document.getElementById('customerAddress')?.value || randomAddressNinhThuan();
+        let grandTotal = 0;
+        const items = [];
+
+        // Thu thập dữ liệu từ bảng và tính tổng
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            const checkbox = row.querySelector('.export-checkbox');
+            if (checkbox && checkbox.checked) {
+                const itemId = row.getAttribute('data-item-id') || '';
+                const name = row.cells[1].innerText || '';
+                const unit = row.cells[2].innerText || '';
+                const qty = normalizeNumber(row.querySelector('.export-qty')?.value) || 0;
+                const sellingPrice = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
+                const itemTotal = qty * sellingPrice;
+                grandTotal += itemTotal;
+                items.push({ itemId, name, unit, qty, sellingPrice, itemTotal });
+            }
+        });
+
+        // Dòng đầu tiên: Thông tin khách hàng và sản phẩm đầu tiên + TongCong
+        const headerRow = Array(headers.length).fill('');
+        headerRow[0] = 1; // STT
+        headerRow[1] = getTodayDDMMYYYY(); // NgayHoaDon (03/07/2025)
+        headerRow[2] = `KH${Math.floor(Math.random() * 1000) + 1000}`; // MaKhachHang
+        headerRow[3] = customerNameInput; // TenKhachHang
+        headerRow[4] = customerNameInput; // TenNguoiMua
+        headerRow[6] = customerAddressInput; // DiaChiKhachHang
+        headerRow[10] = 'TM'; // HinhThucTT
+        if (items.length > 0) {
+            headerRow[11] = items[0].itemId; // MaSanPham
+            headerRow[12] = items[0].name; // SanPham
+            headerRow[13] = items[0].unit; // DonViTinh
+            headerRow[16] = items[0].qty; // SoLuong
+            headerRow[17] = items[0].sellingPrice; // DonGia
+            headerRow[20] = formatMoney(items[0].itemTotal); // ThanhTien
+        }
+        headerRow[26] = formatMoney(grandTotal); // TongCong
+        headerRow[28] = 'VND'; // DonViTienTe
+        headerRow[55] = 'mau_01'; // mau_01
+        rows.push(headerRow);
+
+        // Các dòng tiếp theo: Thông tin sản phẩm
+        items.forEach((item, index) => {
+            const rowData = Array(headers.length).fill('');
+            rowData[0] = index + 2; // STT
+            rowData[1] = getTodayDDMMYYYY(); // NgayHoaDon
+            rowData[2] = `KH${Math.floor(Math.random() * 1000) + 1000}`; // MaKhachHang
+            rowData[10] = 'TM'; // HinhThucTT
+            rowData[11] = item.itemId; // MaSanPham
+            rowData[12] = item.name; // SanPham
+            rowData[13] = item.unit; // DonViTinh
+            rowData[16] = item.qty; // SoLuong
+            rowData[17] = item.sellingPrice; // DonGia
+            rowData[20] = formatMoney(item.itemTotal); // ThanhTien
+            rowData[28] = 'VND'; // DonViTienTe
+            rowData[55] = 'mau_01'; // mau_01
+            rows.push(rowData);
+        });
+
+        if (rows.length <= 1) {
+            alert('Không có dữ liệu để xuất!');
+            return;
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
+        XLSX.writeFile(wb, `HoaDonXuat_${businessId}_${Date.now()}.xlsx`);
+    } catch (e) {
+        console.error('Lỗi exportToExcel:', e);
+        alert('Lỗi khi xuất file Excel: ' + e.message);
+    }
+}
+
+function generateAutoInvoice(businessId) {
+    try {
+        const tbody = document.getElementById('autoInvoiceItemsBody');
+        if (!tbody) {
+            console.error('Không tìm thấy #autoInvoiceItemsBody trong DOM');
+            return;
+        }
+        const inv = inventory.filter(i => i.businessId === businessId && normalizeNumber(i.qty) > 0 && normalizeNumber(i.price) > 0);
+        if (inv.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8">Không có sản phẩm để xuất.</td></tr>';
+            updateAutoInvoiceTotal(businessId);
+            return;
+        }
+
+        const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 1000;
+        const tolerance = targetAmount * 0.10;
+        const minAmount = targetAmount - tolerance;
+        const maxAmount = targetAmount + tolerance;
+
+        let totalAmount = 0;
+        const items = [];
+        const availableItems = [...inv].sort((a, b) => calculateSellingPrice(normalizeNumber(b.price)) - calculateSellingPrice(normalizeNumber(a.price)));
+
+        while (availableItems.length > 0 && totalAmount < maxAmount) {
+            const item = availableItems[0];
+            const maxQty = normalizeNumber(item.qty);
+            const sellingPrice = calculateSellingPrice(normalizeNumber(item.price));
+            const qty = Math.min(Math.floor((maxAmount - totalAmount) / sellingPrice), maxQty);
+            if (qty > 0 && totalAmount + (qty * sellingPrice) <= maxAmount) {
+                items.push({ ...item, qty, sellingPrice, itemTotal: qty * sellingPrice });
+                totalAmount += qty * sellingPrice;
+                availableItems.shift();
+            } else {
+                availableItems.shift();
+            }
+        }
+
+        if (items.length === 0 || totalAmount < minAmount) {
+            tbody.innerHTML = '<tr><td colspan="8">Không thể tạo hóa đơn với số tiền mục tiêu.</td></tr>';
+        } else {
+            tbody.innerHTML = items.map((item, index) => `
+                <tr data-item-id="${item.id}">
+                    <td><input type="checkbox" class="export-checkbox" checked onchange="updateAutoInvoiceTotal('${businessId}')"></td>
+                    <td>${item.name}</td>
+                    <td>${item.unit}</td>
+                    <td>${item.qty}</td>
+                    <td><input type="number" class="auto-qty" value="${item.qty}" min="1" max="${item.qty}" onchange="updateAutoInvoiceTotal('${businessId}')"></td>
+                    <td>${formatMoney(item.sellingPrice)} VND</td>
+                    <td><span class="auto-total">${formatMoney(item.itemTotal)} VND</span></td>
+                    <td><button onclick="removeAutoInvoiceItem('${item.id}', '${businessId}')">❌</button></td>
+                </tr>
+            `).join('');
+        }
+        updateAutoInvoiceTotal(businessId);
+    } catch (e) {
+        console.error('Lỗi generateAutoInvoice:', e);
+        alert('Lỗi khi tạo hóa đơn: ' + e.message);
+    }
+}
+
+function updateAutoInvoiceTotal(businessId) {
+    try {
+        const tbody = document.getElementById('autoInvoiceItemsBody');
+        if (!tbody) {
+            console.error('Không tìm thấy #autoInvoiceItemsBody trong DOM');
+            return;
+        }
+        let total = 0;
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            const checkbox = row.querySelector('.export-checkbox');
+            const qtyInput = row.querySelector('.auto-qty');
+            if (checkbox && qtyInput && checkbox.checked) {
+                const qty = normalizeNumber(qtyInput.value) || 0;
+                const maxQty = normalizeNumber(row.cells[3].innerText);
+                if (qty > maxQty) {
+                    qtyInput.value = maxQty;
+                }
+                const price = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
+                const totalCell = row.querySelector('.auto-total');
+                totalCell.innerText = `${formatMoney(qty * price)} VND`;
+                total += qty * price;
+            } else {
+                row.querySelector('.auto-total').innerText = '0 VND';
+            }
+        });
+        const autoInvoiceTotal = document.getElementById('autoInvoiceTotal');
+        if (autoInvoiceTotal) {
+            autoInvoiceTotal.innerText = `Tổng tiền: ${formatMoney(total)} VND`;
+        }
+    } catch (e) {
+        console.error('Lỗi updateAutoInvoiceTotal:', e);
+    }
+}
+
+function removeAutoInvoiceItem(itemId, businessId) {
+    try {
+        const tbody = document.getElementById('autoInvoiceItemsBody');
+        if (!tbody) {
+            console.error('Không tìm thấy #autoInvoiceItemsBody trong DOM');
+            return;
+        }
+        const row = tbody.querySelector(`tr[data-item-id="${itemId}"]`);
+        if (row) row.remove();
+        updateAutoInvoiceTotal(businessId);
+    } catch (e) {
+        console.error('Lỗi removeAutoInvoiceItem:', e);
+    }
+}
+
+function saveAutoInvoice(businessId) {
+    try {
+        const tbody = document.getElementById('autoInvoiceItemsBody');
+        if (!tbody || tbody.querySelectorAll('tr').length === 0) {
+            alert('Vui lòng tạo hóa đơn trước khi lưu!');
+            return;
+        }
+
+        const items = [];
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            const checkbox = row.querySelector('.export-checkbox');
+            const itemId = row.getAttribute('data-item-id');
+            const item = inventory.find(i => i.id === itemId && i.businessId === businessId);
+            const qtyInput = row.querySelector('.auto-qty');
+            const qty = normalizeNumber(qtyInput.value) || 0;
+            if (item && checkbox && checkbox.checked && qty > 0) {
+                if (qty > normalizeNumber(item.qty)) {
+                    alert(`Số lượng xuất (${qty}) vượt quá tồn kho (${item.qty}) cho ${item.name}!`);
+                    throw new Error('Số lượng xuất không hợp lệ');
+                }
+                items.push({
+                    id: itemId,
+                    name: item.name,
+                    unit: item.unit,
+                    qty: qty.toString(),
+                    price: calculateSellingPrice(normalizeNumber(item.price)).toString(),
+                    total: (qty * calculateSellingPrice(normalizeNumber(item.price))).toString()
+                });
+            }
+        });
+
+        if (items.length === 0) {
+            alert('Vui lòng chọn ít nhất một sản phẩm để xuất!');
+            return;
+        }
+
+        const grandTotal = items.reduce((sum, item) => sum + normalizeNumber(item.total), 0);
         const invoice = {
             id: generateUUID(),
             businessId,
-            invoiceCode: 'INV-AUTO-' + Date.now(),
+            invoiceCode: `INV-AUTO-${Date.now()}`,
             invoiceDate: getTodayDDMMYYYY(),
-            customerName: items[0].name,
-            address: items[0].unit,
             items,
             grandTotal: grandTotal.toString()
         };
@@ -1319,9 +1681,8 @@ function saveAutoInvoice(businessId) {
         });
         localStorage.setItem('inventory', JSON.stringify(inventory));
 
-        showBusinessDetails(businessId);
-        showInvoicesTab(businessId);
         document.getElementById('autoInvoiceTab').innerHTML = '';
+        showAutoInvoiceTab(businessId); // Cập nhật lại giao diện
         alert('Đã xuất hóa đơn tự động thành công!');
     } catch (e) {
         console.error('Lỗi saveAutoInvoice:', e);
@@ -1335,81 +1696,26 @@ function exportAutoInvoiceToExcel(businessId) {
     try {
         const tbody = document.getElementById('autoInvoiceItemsBody');
         if (!tbody || tbody.querySelectorAll('tr').length === 0) {
-            console.error('Không tìm thấy #autoInvoiceItemsBody hoặc bảng trống');
-            alert('Vui lòng tạo bảng hóa đơn trước khi xuất Excel!');
+            alert('Vui lòng tạo hóa đơn trước khi xuất Excel!');
             return;
         }
 
-        const headers = [
-            'STT', 'NgayHoaDon', 'MaKhachHang', 'TenKhachHang', 'TenNguoiMua', 'MaSoThue', 'DiaChiKhachHang', 'DienThoaiKhachHang',
-            'SoTaiKhoan', 'NganHang', 'HinhThucTT', 'MaSanPham', 'SanPham', 'DonViTinh', 'Extra1SP', 'Extra2SP', 'SoLuong',
-            'DonGia', 'TyLeChietKhau', 'SoTienChietKhau', 'ThanhTien', 'TienBan', 'ThueSuat', 'TienThueSanPham', 'TienThue',
-            'TongSoTienChietKhau', 'TongCong', 'TinhChatHangHoa', 'DonViTienTe', 'TyGia', 'Fkey', 'Extra1', 'Extra2',
-            'EmailKhachHang', 'VungDuLieu', 'Extra3', 'Extra4', 'Extra5', 'Extra6', 'Extra7', 'Extra8', 'Extra9', 'Extra10',
-            'Extra11', 'Extra12', 'LDDNBo', 'HDSo', 'HVTNXHang', 'TNVChuyen', 'PTVChuyen', 'HDKTNgay', 'HDKTSo', 'CCCDan', '', '', 'mau_01'
-        ];
-
         const rows = [headers];
-
         Array.from(tbody.querySelectorAll('tr')).forEach((row, index) => {
-            const rowData = [];
+            const rowData = Array(headers.length).fill('');
             rowData[0] = index + 1; // STT
             rowData[1] = getTodayDDMMYYYY(); // NgayHoaDon
             rowData[2] = `KH${Math.floor(Math.random() * 1000) + 1000}`; // MaKhachHang
             rowData[3] = 'Khách lẻ'; // TenKhachHang
             rowData[4] = 'Khách lẻ'; // TenNguoiMua
-            rowData[5] = ''; // MaSoThue
-            rowData[6] = 'Ninh Thuận'; // DiaChiKhachHang
-            rowData[7] = ''; // DienThoaiKhachHang
-            rowData[8] = ''; // SoTaiKhoan
-            rowData[9] = ''; // NganHang
-            rowData[10] = 'TM'; // HinhThucTT
             rowData[11] = row.getAttribute('data-item-id') || ''; // MaSanPham
             rowData[12] = row.cells[1].innerText || ''; // SanPham
             rowData[13] = row.cells[2].innerText || ''; // DonViTinh
-            rowData[14] = ''; // Extra1SP
-            rowData[15] = ''; // Extra2SP
             rowData[16] = normalizeNumber(row.querySelector('.auto-qty')?.value) || 0; // SoLuong
-            rowData[17] = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0; // DonGia (giá bán)
-            rowData[18] = 0; // TyLeChietKhau
-            rowData[19] = 0; // SoTienChietKhau
-            rowData[20] = ''; // ThanhTien
-            rowData[21] = ''; // TienBan
-            rowData[22] = ''; // ThueSuat
-            rowData[23] = 0; // TienThueSanPham
-            rowData[24] = 0; // TienThue
-            rowData[25] = 0; // TongSoTienChietKhau
+            rowData[17] = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0; // DonGia
             rowData[26] = normalizeNumber(row.querySelector('.auto-total')?.innerText.replace(/[^\d.,]/g, '')) || 0; // TongCong
-            rowData[27] = ''; // TinhChatHangHoa
             rowData[28] = 'VND'; // DonViTienTe
-            rowData[29] = 0; // TyGia
-            rowData[30] = ''; // Fkey
-            rowData[31] = ''; // Extra1
-            rowData[32] = ''; // Extra2
-            rowData[33] = ''; // EmailKhachHang
-            rowData[34] = ''; // VungDuLieu
-            rowData[35] = ''; // Extra3
-            rowData[36] = ''; // Extra4
-            rowData[37] = ''; // Extra5
-            rowData[38] = ''; // Extra6
-            rowData[39] = ''; // Extra7
-            rowData[40] = ''; // Extra8
-            rowData[41] = ''; // Extra9
-            rowData[42] = ''; // Extra10
-            rowData[43] = ''; // Extra11
-            rowData[44] = ''; // Extra12
-            rowData[45] = ''; // LDDNBo
-            rowData[46] = ''; // HDSo
-            rowData[47] = ''; // HVTNXHang
-            rowData[48] = ''; // TNVChuyen
-            rowData[49] = ''; // PTVChuyen
-            rowData[50] = ''; // HDKTNgay
-            rowData[51] = ''; // HDKTSo
-            rowData[52] = ''; // CCCDan
-            rowData[53] = ''; // ''
-            rowData[54] = ''; // ''
             rowData[55] = 'mau_01'; // mau_01
-
             rows.push(rowData);
         });
 
@@ -1420,14 +1726,13 @@ function exportAutoInvoiceToExcel(businessId) {
 
         const ws = XLSX.utils.aoa_to_sheet(rows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
+        XLSX.utils.book_append_sheet(wb, ws, 'HoaDonTuDong');
         XLSX.writeFile(wb, `HoaDonTuDong_${businessId}_${Date.now()}.xlsx`);
     } catch (e) {
         console.error('Lỗi exportAutoInvoiceToExcel:', e);
         alert('Lỗi khi xuất file Excel: ' + e.message);
     }
 }
-
 
 // =============================================
 // 8. GIAO DIỆN HIỂN THỊ
@@ -1540,21 +1845,15 @@ function showPriceList(businessId) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${inv.map(i => {
-            const taxRate = parseFloat(i.vat.replace('%', '')) / 100 || 0.1;
-            const rawPrice = normalizeNumber(i.price) * (1 + taxRate) + 2000;
-            const giaSanPham = Math.round(rawPrice / 1000) * 1000;
-
-            return `
-                                <tr>
-                                    <td>${generateUUID().substring(0, 8)}</td>
-                                    <td>${i.name}</td>
-                                    <td>${formatMoney(giaSanPham)}</td>
-                                    <td>${i.unit}</td>
-                                    <td>${i.name}</td>
-                                </tr>
-                            `;
-        }).join('')}
+                        ${inv.map(i => `
+                            <tr>
+                                <td>${generateUUID().substring(0, 8)}</td>
+                                <td>${i.name}</td>
+                                <td>${formatMoney(calculateSellingPrice(normalizeNumber(i.price)))}</td> <!-- Cập nhật logic -->
+                                <td>${i.unit}</td>
+                                <td>${i.name}</td>
+                            </tr>
+                        `).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1724,10 +2023,9 @@ function showExportTab(businessId) {
                 <h4>Xuất hàng hóa</h4>
                 <div class="controls">
                     <label>Số tiền mục tiêu (VND):</label>
-                    <input type="number" id="targetAmount" min="1000" value="50000" oninput="onTargetAmountChange('${businessId}')">
+                    <input type="number" id="targetAmount" min="1000" value="" oninput="generateExportItems('${businessId}')">
                     <button onclick="generateExportItems('${businessId}')">🎲 Tạo danh sách xuất</button>
-                    <button onclick="saveExport('${businessId}')">💾 Xuất hàng hóa</button>
-                    <button onclick="exportToExcel('${businessId}')">📤 Xuất hóa đơn (.xlsx)</button>
+                    <button onclick="saveExportAndExportExcel('${businessId}')">💾 Xuất hàng hóa</button>
                 </div>
                 <table class="compact-table" id="exportItemsBody">
                     <thead>
@@ -1745,6 +2043,18 @@ function showExportTab(businessId) {
     }
 }
 
+// Thêm hàm mới để thực hiện cả 2 hành động
+function saveExportAndExportExcel(businessId) {
+    exportToExcel(businessId);
+    saveExport(businessId);
+    
+}
+
+// Hàm mới - Xuất hàng rồi mới xuất Excel
+function saveExportAndExportExcel(businessId) {
+    exportToExcel(businessId);  // Sau đó xuất Excel
+    saveExport(businessId);  // Thực hiện xuất hàng trước
+}
 function showAutoInvoiceTab(businessId) {
     try {
         const autoInvoiceTab = document.getElementById('autoInvoiceTab');
@@ -1833,7 +2143,6 @@ function showRandomExportTab(businessId) {
         console.error('Lỗi showRandomExportTab:', e);
     }
 }
-
 
 // =============================================
 // 9. HÀM XỬ LÝ SỰ KIỆN VÀ KHỞI TẠO
@@ -1924,32 +2233,33 @@ function generateExportItems(businessId) {
         const inv = inventory.filter(i => i.businessId === businessId && normalizeNumber(i.qty) > 0 && normalizeNumber(i.price) > 0);
         if (inv.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8">Không có sản phẩm để xuất.</td></tr>';
+            updateExportTotal(businessId);
             return;
         }
 
         const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 50000;
+        if (targetAmount < 1000) {
+            //alert('Số tiền mục tiêu phải lớn hơn hoặc bằng 1,000 VND!');
+            document.getElementById('targetAmount').value = 1000;
+            return;
+        }
         const tolerance = targetAmount * 0.10;
         const minAmount = targetAmount - tolerance;
         const maxAmount = targetAmount + tolerance;
 
         let totalAmount = 0;
         const items = [];
-        const availableItems = [...inv].sort((a, b) => calculateSellingPrice(b.price) - calculateSellingPrice(a.price));
+        const availableItems = [...inv].sort((a, b) => calculateSellingPrice(normalizeNumber(b.price)) - calculateSellingPrice(normalizeNumber(a.price)));
 
         while (availableItems.length > 0 && totalAmount < maxAmount) {
             const item = availableItems[0];
             const maxQty = normalizeNumber(item.qty);
-            const sellingPrice = calculateSellingPrice(item.price);
+            const sellingPrice = calculateSellingPrice(normalizeNumber(item.price));
             const qty = Math.min(Math.floor((maxAmount - totalAmount) / sellingPrice), maxQty);
-            if (qty > 0) {
-                const itemTotal = qty * sellingPrice;
-                if (totalAmount + itemTotal <= maxAmount) {
-                    items.push({ ...item, qty, sellingPrice, itemTotal });
-                    totalAmount += itemTotal;
-                    availableItems.shift();
-                } else {
-                    break;
-                }
+            if (qty > 0 && totalAmount + (qty * sellingPrice) <= maxAmount) {
+                items.push({ ...item, qty, sellingPrice, itemTotal: qty * sellingPrice });
+                totalAmount += qty * sellingPrice;
+                availableItems.shift();
             } else {
                 availableItems.shift();
             }
@@ -1957,28 +2267,161 @@ function generateExportItems(businessId) {
 
         if (items.length === 0 || totalAmount < minAmount) {
             tbody.innerHTML = '<tr><td colspan="8">Không thể tạo danh sách với số tiền mục tiêu.</td></tr>';
-            return;
+        } else {
+            tbody.innerHTML = items.map((item, index) => `
+                <tr data-item-id="${item.id}">
+                    <td><input type="checkbox" class="export-checkbox" checked onchange="updateExportTotal('${businessId}')"></td>
+                    <td>${item.name}</td>
+                    <td>${item.unit}</td>
+                    <td>${item.qty}</td>
+                    <td><input type="number" class="export-qty" value="${item.qty}" min="1" max="${item.qty}" onchange="updateExportTotal('${businessId}')"></td>
+                    <td>${formatMoney(item.sellingPrice)} VND</td>
+                    <td><span class="export-total">${formatMoney(item.itemTotal)} VND</span></td>
+                    <td><button onclick="removeExportItem('${item.id}')">❌</button></td>
+                </tr>
+            `).join('');
         }
-
-        tbody.innerHTML = items.map((item, index) => `
-            <tr data-item-id="${item.id}">
-                <td><input type="checkbox" class="export-checkbox" checked></td>
-                <td>${item.name}</td>
-                <td>${item.unit}</td>
-                <td>${item.qty}</td>
-                <td><input type="number" class="export-qty" value="${item.qty}" min="1" max="${item.qty}" onchange="updateExportTotal('${businessId}')"></td>
-                <td>${item.sellingPrice.toLocaleString('vi-VN')} VND</td>
-                <td><span class="export-total">${item.itemTotal.toLocaleString('vi-VN')} VND</span></td>
-                <td><button onclick="removeExportItem('${item.id}')">❌</button></td>
-            </tr>
-        `).join('');
         updateExportTotal(businessId);
     } catch (e) {
         console.error('Lỗi generateExportItems:', e);
         alert('Lỗi khi tạo danh sách xuất: ' + e.message);
     }
 }
+function showPreviewModal(businessId) {
+    const tbody = document.getElementById('exportItemsBodyContent');
+    if (!tbody || tbody.querySelectorAll('tr').length === 0) {
+        alert('Vui lòng tạo danh sách xuất trước khi xem trước!');
+        return;
+    }
 
+    const modal = document.getElementById('exportPreviewModal');
+    const previewBody = document.getElementById('previewBody');
+    previewBody.innerHTML = '';
+
+    const customerNameInput = document.getElementById('customerName')?.value || randomCustomerName();
+    const customerAddressInput = document.getElementById('customerAddress')?.value || randomAddressNinhThuan();
+    document.getElementById('previewCustomerName').value = customerNameInput;
+    document.getElementById('previewCustomerAddress').value = customerAddressInput;
+
+    let grandTotal = 0;
+    const items = [];
+
+    Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+        const checkbox = row.querySelector('.export-checkbox');
+        if (checkbox && checkbox.checked) {
+            const itemId = row.getAttribute('data-item-id') || '';
+            const name = row.cells[1].innerText || '';
+            const unit = row.cells[2].innerText || '';
+            const qty = normalizeNumber(row.querySelector('.export-qty')?.value) || 0;
+            const sellingPrice = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
+            const itemTotal = qty * sellingPrice;
+            grandTotal += itemTotal;
+            items.push({ itemId, name, unit, qty, sellingPrice, itemTotal });
+        }
+    });
+
+    // Dòng đầu tiên
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = `
+        <td contenteditable="true">1</td>
+        <td contenteditable="true">${getTodayDDMMYYYY()}</td>
+        <td contenteditable="true">KH${Math.floor(Math.random() * 1000) + 1000}</td>
+        <td contenteditable="true">${customerNameInput}</td>
+        <td contenteditable="true">${customerNameInput}</td>
+        <td contenteditable="true">${customerAddressInput}</td>
+        <td contenteditable="true">TM</td>
+        <td contenteditable="true">${items.length > 0 ? items[0].itemId : ''}</td>
+        <td contenteditable="true">${items.length > 0 ? items[0].name : ''}</td>
+        <td contenteditable="true">${items.length > 0 ? items[0].unit : ''}</td>
+        <td contenteditable="true">${items.length > 0 ? items[0].qty : ''}</td>
+        <td contenteditable="true">${items.length > 0 ? items[0].sellingPrice : ''}</td>
+        <td contenteditable="true">${items.length > 0 ? formatMoney(items[0].itemTotal) : ''}</td>
+        <td contenteditable="true">${formatMoney(grandTotal)}</td>
+        <td contenteditable="true">VND</td>
+        <td contenteditable="true">mau_01</td>
+    `;
+    previewBody.appendChild(headerRow);
+
+    // Các dòng sản phẩm
+    items.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td contenteditable="true">${index + 2}</td>
+            <td contenteditable="true">${getTodayDDMMYYYY()}</td>
+            <td contenteditable="true">KH${Math.floor(Math.random() * 1000) + 1000}</td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true">TM</td>
+            <td contenteditable="true">${item.itemId}</td>
+            <td contenteditable="true">${item.name}</td>
+            <td contenteditable="true">${item.unit}</td>
+            <td contenteditable="true">${item.qty}</td>
+            <td contenteditable="true">${item.sellingPrice}</td>
+            <td contenteditable="true">${formatMoney(item.itemTotal)}</td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true">VND</td>
+            <td contenteditable="true">mau_01</td>
+        `;
+        previewBody.appendChild(row);
+    });
+
+    modal.style.display = 'block';
+}
+
+function closePreviewModal() {
+    document.getElementById('exportPreviewModal').style.display = 'none';
+}
+
+function saveAndExport(businessId) {
+    const previewBody = document.getElementById('previewBody');
+    const rows = [];
+    const customerName = document.getElementById('previewCustomerName').value || randomCustomerName();
+    const customerAddress = document.getElementById('previewCustomerAddress').value || randomAddressNinhThuan();
+    let grandTotal = 0;
+
+    Array.from(previewBody.querySelectorAll('tr')).forEach((row, index) => {
+        const cells = Array.from(row.querySelectorAll('td'));
+        const rowData = cells.map(cell => {
+            const dataValue = cell.getAttribute('data-value');
+            let value = dataValue !== null ? dataValue : cell.innerText.trim();
+            const colIndex = cells.indexOf(cell);
+            // Xử lý các cột số (SoLuong, DonGia, ThanhTien, TongCong) thành số nguyên
+            if ([10, 11, 12, 13].includes(colIndex)) { // Cột SoLuong, DonGia, ThanhTien, TongCong
+                value = parseInt(value.replace(/[^\d]/g, '')) || 0; // Loại bỏ ký tự không phải số
+            }
+            return value;
+        });
+        if (index === 0) {
+            rowData[3] = customerName; // TenKhachHang
+            rowData[4] = customerName; // TenNguoiMua
+            rowData[6] = customerAddress; // DiaChiKhachHang
+            grandTotal = parseInt(rowData[13].replace(/[^\d]/g, '')) || 0; // TongCong dòng 1
+        } else {
+            const qty = parseInt(rowData[10].replace(/[^\d]/g, '')) || 0; // SoLuong
+            const price = parseInt(rowData[11].replace(/[^\d]/g, '')) || 0; // DonGia
+            rowData[12] = qty * price; // ThanhTien
+            rowData[13] = qty * price; // TongCong cho dòng sản phẩm
+            grandTotal += qty * price; // Cộng dồn vào tổng
+        }
+        rows.push(rowData);
+    });
+
+    // Cập nhật TongCong cho dòng 1 với tổng của tất cả sản phẩm
+    if (rows.length > 1) {
+        rows[0][13] = grandTotal; // Đảm bảo TongCong dòng 1 là tổng
+    }
+
+    console.log('Dữ liệu xuất:', rows); // Debug để kiểm tra
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
+    XLSX.writeFile(wb, `HoaDonXuat_${businessId}_${Date.now()}.xlsx`);
+    closePreviewModal();
+}
+
+// Thay nút xuất Excel gọi showPreviewModal
+document.querySelector('button[onclick*="exportToExcel"]').setAttribute('onclick', `showPreviewModal('${businessId}')`);
 // 💾 Lưu xuất hàng hóa
 function saveExport(businessId) {
     try {
@@ -2065,76 +2508,65 @@ function exportToExcel(businessId) {
             return;
         }
 
-        const headers = [
-            'STT', 'NgayHoaDon', 'MaKhachHang', 'TenKhachHang', 'TenNguoiMua', 'MaSoThue', 'DiaChiKhachHang', 'DienThoaiKhachHang',
-            'SoTaiKhoan', 'NganHang', 'HinhThucTT', 'MaSanPham', 'SanPham', 'DonViTinh', 'Extra1SP', 'Extra2SP', 'SoLuong',
-            'DonGia', 'TyLeChietKhau', 'SoTienChietKhau', 'ThanhTien', 'TienBan', 'ThueSuat', 'TienThueSanPham', 'TienThue',
-            'TongSoTienChietKhau', 'TongCong', 'TinhChatHangHoa', 'DonViTienTe', 'TyGia', 'Fkey', 'Extra1', 'Extra2',
-            'EmailKhachHang', 'VungDuLieu', 'Extra3', 'Extra4', 'Extra5', 'Extra6', 'Extra7', 'Extra8', 'Extra9', 'Extra10',
-            'Extra11', 'Extra12', 'LDDNBo', 'HDSo', 'HVTNXHang', 'TNVChuyen', 'PTVChuyen', 'HDKTNgay', 'HDKTSo', 'CCCDan', '', '', 'mau_01'
-        ];
-
         const rows = [headers];
+        const customerNameInput = document.getElementById('customerName')?.value || randomCustomerName();
+        const customerAddressInput = document.getElementById('customerAddress')?.value || randomAddressNinhThuan();
+        let grandTotal = 0;
+        const items = [];
 
-        Array.from(tbody.querySelectorAll('tr')).forEach((row, index) => {
-            const rowData = [];
-            rowData[0] = index + 1; // STT
+        // Thu thập dữ liệu từ bảng và tính tổng
+        Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+            const checkbox = row.querySelector('.export-checkbox');
+            if (checkbox && checkbox.checked) {
+                const itemId = row.getAttribute('data-item-id') || '';
+                const name = row.cells[1].innerText || '';
+                const unit = row.cells[2].innerText || '';
+                const qty = normalizeNumber(row.querySelector('.export-qty')?.value) || 0;
+                const sellingPrice = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
+                const itemTotal = qty * sellingPrice;
+                grandTotal += itemTotal;
+                items.push({ itemId, name, unit, qty, sellingPrice, itemTotal });
+            }
+        });
+
+        // Dòng đầu tiên: Thông tin khách hàng và sản phẩm đầu tiên + TongCong
+        const headerRow = Array(headers.length).fill('');
+        headerRow[0] = 1; // STT
+        headerRow[1] = getTodayDDMMYYYY(); // NgayHoaDon
+        headerRow[2] = `KH${Math.floor(Math.random() * 1000) + 1000}`; // MaKhachHang
+        headerRow[3] = customerNameInput; // TenKhachHang
+        headerRow[4] = customerNameInput; // TenNguoiMua
+        headerRow[6] = customerAddressInput; // DiaChiKhachHang
+        headerRow[10] = 'TM'; // HinhThucTT
+        if (items.length > 0) {
+            headerRow[11] = items[0].itemId; // MaSanPham
+            headerRow[12] = items[0].name; // SanPham
+            headerRow[13] = items[0].unit; // DonViTinh
+            headerRow[16] = items[0].qty; // SoLuong
+            headerRow[17] = parseInt(items[0].sellingPrice); // DonGia (số nguyên)
+            headerRow[20] = parseInt(items[0].itemTotal); // ThanhTien (số nguyên)
+        }
+        headerRow[26] = parseInt(grandTotal); // TongCong (số nguyên)
+        headerRow[28] = 'VND'; // DonViTienTe
+        headerRow[55] = 'mau_01'; // mau_01
+        rows.push(headerRow);
+
+        // Các dòng tiếp theo: Thông tin sản phẩm
+        items.forEach((item, index) => {
+            const rowData = Array(headers.length).fill('');
+            rowData[0] = index + 2; // STT
             rowData[1] = getTodayDDMMYYYY(); // NgayHoaDon
             rowData[2] = `KH${Math.floor(Math.random() * 1000) + 1000}`; // MaKhachHang
-            rowData[3] = 'Khách lẻ'; // TenKhachHang
-            rowData[4] = 'Khách lẻ'; // TenNguoiMua
-            rowData[5] = ''; // MaSoThue
-            rowData[6] = 'Ninh Thuận'; // DiaChiKhachHang
-            rowData[7] = ''; // DienThoaiKhachHang
-            rowData[8] = ''; // SoTaiKhoan
-            rowData[9] = ''; // NganHang
             rowData[10] = 'TM'; // HinhThucTT
-            rowData[11] = row.getAttribute('data-item-id') || ''; // MaSanPham
-            rowData[12] = row.cells[1].innerText || ''; // SanPham
-            rowData[13] = row.cells[2].innerText || ''; // DonViTinh
-            rowData[14] = ''; // Extra1SP
-            rowData[15] = ''; // Extra2SP
-            rowData[16] = normalizeNumber(row.querySelector('.export-qty')?.value) || 0; // SoLuong
-            rowData[17] = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0; // DonGia (giá bán)
-            rowData[18] = 0; // TyLeChietKhau
-            rowData[19] = 0; // SoTienChietKhau
-            rowData[20] = ''; // ThanhTien
-            rowData[21] = ''; // TienBan
-            rowData[22] = ''; // ThueSuat
-            rowData[23] = 0; // TienThueSanPham
-            rowData[24] = 0; // TienThue
-            rowData[25] = 0; // TongSoTienChietKhau
-            rowData[26] = normalizeNumber(row.querySelector('.export-total')?.innerText.replace(/[^\d.,]/g, '')) || 0; // TongCong
-            rowData[27] = ''; // TinhChatHangHoa
+            rowData[11] = item.itemId; // MaSanPham
+            rowData[12] = item.name; // SanPham
+            rowData[13] = item.unit; // DonViTinh
+            rowData[16] = item.qty; // SoLuong
+            rowData[17] = parseInt(item.sellingPrice); // DonGia (số nguyên)
+            rowData[20] = parseInt(item.itemTotal); // ThanhTien (số nguyên)
+            rowData[26] = parseInt(item.itemTotal); // TongCong (số nguyên)
             rowData[28] = 'VND'; // DonViTienTe
-            rowData[29] = 0; // TyGia
-            rowData[30] = ''; // Fkey
-            rowData[31] = ''; // Extra1
-            rowData[32] = ''; // Extra2
-            rowData[33] = ''; // EmailKhachHang
-            rowData[34] = ''; // VungDuLieu
-            rowData[35] = ''; // Extra3
-            rowData[36] = ''; // Extra4
-            rowData[37] = ''; // Extra5
-            rowData[38] = ''; // Extra6
-            rowData[39] = ''; // Extra7
-            rowData[40] = ''; // Extra8
-            rowData[41] = ''; // Extra9
-            rowData[42] = ''; // Extra10
-            rowData[43] = ''; // Extra11
-            rowData[44] = ''; // Extra12
-            rowData[45] = ''; // LDDNBo
-            rowData[46] = ''; // HDSo
-            rowData[47] = ''; // HVTNXHang
-            rowData[48] = ''; // TNVChuyen
-            rowData[49] = ''; // PTVChuyen
-            rowData[50] = ''; // HDKTNgay
-            rowData[51] = ''; // HDKTSo
-            rowData[52] = ''; // CCCDan
-            rowData[53] = ''; // ''
-            rowData[54] = ''; // ''
             rowData[55] = 'mau_01'; // mau_01
-
             rows.push(rowData);
         });
 
@@ -2143,6 +2575,7 @@ function exportToExcel(businessId) {
             return;
         }
 
+        console.log('Dữ liệu xuất:', rows); // Debug để kiểm tra
         const ws = XLSX.utils.aoa_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'HoaDon');
@@ -2353,6 +2786,7 @@ function exportPriceListToExcel(businessId) {
     }
 }
 
+
 // =============================================
 // 10. CẬP NHẬT HÀM XỬ LÝ SỰ KIỆN VÀ KHỞI TẠO
 // =============================================
@@ -2427,17 +2861,18 @@ function updateExportTotal(businessId) {
             const qtyInput = row.querySelector('.export-qty');
             if (checkbox && qtyInput && checkbox.checked) {
                 const qty = normalizeNumber(qtyInput.value) || 0;
-                const price = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
+                const sellingPrice = normalizeNumber(row.cells[5].innerText.replace(/[^\d.,]/g, '')) || 0;
                 const totalCell = row.querySelector('.export-total');
-                totalCell.innerText = `${(qty * price).toLocaleString('vi-VN')} VND`;
-                total += qty * price;
+                const itemTotal = qty * sellingPrice;
+                totalCell.innerText = `${formatMoney(itemTotal)} VND`;
+                total += itemTotal;
             } else {
                 row.querySelector('.export-total').innerText = '0 VND';
             }
         });
         const exportTotal = document.getElementById('exportTotal');
         if (exportTotal) {
-            exportTotal.innerText = `Tổng tiền: ${total.toLocaleString('vi-VN')} VND`;
+            exportTotal.innerText = `Tổng tiền: ${formatMoney(total)} VND`;
         }
     } catch (e) {
         console.error('Lỗi updateExportTotal:', e);
