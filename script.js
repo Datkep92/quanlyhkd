@@ -2980,7 +2980,7 @@ function clearAllData() {
             updateBusinessList();
             const businessDetails = document.getElementById('businessDetails');
             if (businessDetails) {
-                businessDetails.innerHTML = '<h4>Chi tiết Hộ Kinh Doanh</h4>';
+                businessDetails.innerHTML = '<h4>Quản lý Hộ Kinh Doanh</h4>';
             }
             const priceListSection = document.getElementById('priceListSection');
             if (priceListSection) priceListSection.remove();
