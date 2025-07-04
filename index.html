@@ -11,85 +11,51 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <header class="header-total">
-    <div class="control-bar">
-      <button onclick="showManualInventoryForm()">➕ Tồn kho thủ công</button>
-      <button onclick="exportInventoryToExcel()">📊 Xuất Excel Tồn kho</button>
-      <button onclick="exportPriceListToExcel()">📊 Xuất Excel Bảng giá</button>
-      <button onclick="clearAllData()">🗑️ Xóa dữ liệu</button>
-      <button id="duplicateToggle" onclick="toggleDuplicateCheck()" title="Tắt Trùng Hóa đơn: BẬT">🔄 Trùng lặp</button>
-    </div>
-  </header>
-
   <div class="container">
-    <div class="sidebar">
-      <input type="file" id="pdfInput" accept="application/pdf" multiple>
-      <div id="status"></div>
-      <input type="text" id="searchInput" placeholder="Tìm kiếm Hộ Kinh Doanh...">
-      <div id="searchResults"></div>
-      <div id="businessList"></div>
-    </div>
-<!-- Modal Popup -->
-<div id="exportPreviewModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="background:white; margin:5% auto; padding:20px; width:80%; max-height:70%; overflow-y:auto;">
-        <h3>Xem trước và chỉnh sửa hóa đơn</h3>
-        <table class="compact-table" id="previewTable">
-            <thead>
-                <tr>
-                    <th>STT</th><th>Ngày hóa đơn</th><th>Mã khách hàng</th><th>Tên khách hàng</th><th>Tên người mua</th><th>Địa chỉ</th><th>Hình thức TT</th>
-                    <th>Mã sản phẩm</th><th>Sản phẩm</th><th>Đơn vị tính</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th><th>Tổng cộng</th><th>Đơn vị tiền tệ</th><th>Mẫu</th>
-                </tr>
-            </thead>
-            <tbody id="previewBody"></tbody>
-        </table>
-        <div>
-            <input type="text" id="previewCustomerName" placeholder="Tên khách hàng" style="margin:5px;">
-            <input type="text" id="previewCustomerAddress" placeholder="Địa chỉ" style="margin:5px;">
-            <button onclick="saveAndExport('${businessId}')" style="margin:5px;">Xuất Excel</button>
-            <button onclick="closePreviewModal()" style="margin:5px;">Hủy</button>
-        </div>
-    </div>
+   <div class="sidebar">
+  <button onclick="clearAllData()">🗑️ Xóa dữ liệu</button>
+  <input type="file" id="pdfInput" accept="application/pdf" multiple>
+  <div id="status"></div>
+  <input type="text" id="searchInput" placeholder="Tìm kiếm Hộ Kinh Doanh...">
+  
+  <!-- Các tab di chuyển vào đây -->
+  <button class="tab-button active" onclick="showTab('inventoryTab', this, selectedBusinessId)">Tồn kho</button>
+  <button class="tab-button" onclick="showTab('invoicesTab', this, selectedBusinessId)">Danh sách hóa đơn</button>
+  <button class="tab-button" onclick="showTab('priceListTab', this, selectedBusinessId)">Bảng giá bán</button>
+  <button class="tab-button" onclick="showTab('exportHistoryTab', this, selectedBusinessId)">Lịch sử xuất hàng</button>
+  <button class="tab-button" onclick="showTab('exportTab', this, selectedBusinessId)">Xuất hàng hóa</button>
+  <button class="tab-button" onclick="alert('Tính năng Báo cáo thuế đang xây dựng. Coming soon!')">📊 Báo cáo thuế</button>
+      <input type="text" id="githubToken" placeholder="Nhập GitHub Token">
+ <button class="save-token-button" onclick="saveGitHubToken()">💾</button>
+
+  
+  <div id="searchResults"></div>
+  <div id="businessList"></div>
 </div>
+    
     <div class="main-content">
       <div id="invoiceInfo"></div>
       <div id="businessDetails">
         <h4>Chi tiết Hộ Kinh Doanh</h4>
-        <div class="tabs">
-    <button class="tab-button active" onclick="showTab('inventoryTab', this, selectedBusinessId)">Tồn kho</button>
-    <button class="tab-button" onclick="showTab('invoicesTab', this, selectedBusinessId)">Danh sách hóa đơn</button>
-    <button class="tab-button" onclick="showTab('priceListTab', this, selectedBusinessId)">Bảng giá bán</button>
-    <button class="tab-button" onclick="showTab('exportHistoryTab', this, selectedBusinessId)">Lịch sử xuất hàng</button>
-    <button class="tab-button" onclick="showTab('exportTab', this, selectedBusinessId)">Xuất hàng hóa</button>
-</div>
-<div id="autoInvoiceTab" class="tab-content hidden">
-    <h2>📄 Xuất Hóa Đơn (Định dạng đúng chuẩn hệ thống)</h2>
-    <div class="controls">
-        <label>Số tiền mục tiêu (VND):</label>
-        <input type="number" id="targetAmount" min="1000" value="1000" onchange="validateTargetAmount()">
-        <button onclick="generateAutoInvoice(selectedBusinessId)">🎲 Tạo hóa đơn ngẫu nhiên</button>
-        <button onclick="saveAutoInvoice(selectedBusinessId)">💾 Xuất hóa đơn</button>
-        <button onclick="exportToExcel()">📤 Xuất hóa đơn (.xlsx)</button>
-        <button onclick="addRow()">➕ Thêm dòng</button>
-    </div>
-    <table id="invoiceTable">
-        <thead>
+        <!-- Đã xóa phần tabs từ đây -->
+        
+        <table id="invoiceTable">
+          <thead>
             <tr id="headerRow"></tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <div id="autoInvoiceTotal">Tổng tiền: 0 VND</div>
-</div>
-</div>
-<div id="autoInvoiceTab" class="tab-content hidden"></div> <!-- Thêm phần tử tab mới -->
-        </div>
-        <div id="inventoryTab" class="tab-content"></div>
-        <div id="invoicesTab" class="tab-content hidden"></div>
-        <div id="priceListTab" class="tab-content"></div>
-        <div id="exportHistoryTab" class="tab-content hidden"></div>
-        <div id="exportTab" class="tab-content hidden"></div>
-        <div id="randomExportTab" class="tab-content hidden"></div> <!-- Thêm phần tử tab mới -->
-        <div id="invoiceDetails" class="section"></div>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="autoInvoiceTotal">Tổng tiền: 0 VND</div>
       </div>
+      
+      <!-- Các tab content -->
+      <div id="inventoryTab" class="tab-content"></div>
+      <div id="invoicesTab" class="tab-content hidden"></div>
+      <div id="priceListTab" class="tab-content hidden"></div>
+      <div id="exportHistoryTab" class="tab-content hidden"></div>
+      <div id="exportTab" class="tab-content hidden"></div>
+      
+      <div id="invoiceDetails" class="section"></div>
 
       <div id="manualInventoryForm" class="section hidden">
         <h4>Nhập Tồn kho Thủ công</h4>
