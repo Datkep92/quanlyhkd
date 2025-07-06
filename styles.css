@@ -3,6 +3,24 @@
   padding: 0;
   box-sizing: border-box;
 }
+#utilityControls {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    padding: 8px 10px;
+}
+
+.utility-buttons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
 .import-history-table {
     width: 100%;
     border-collapse: collapse;
@@ -875,68 +893,7 @@ body {
   padding: 0;
 }
 
-.sidebar {
-  width: 250px;
-  position: sticky;
-  top: 0;
-  left: 0;
-  padding: 12px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-height: 100vh;
-  overflow-y: auto;
-  z-index: 20;
-}
 
-.sidebar ul {
-  list-style: none;
-}
-
-.sidebar li {
-  padding: 8px;
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.sidebar li.active,
-.sidebar li:hover {
-  background: #f0f0f0;
-  border-left: 4px solid #007bff;
-  padding-left: 6px;
-}
-
-.tab-button {
-  display: block;
-  width: 100%;
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  background: #fff;
-  font-size: 12px;
-  cursor: pointer;
-  margin-bottom: 6px;
-  text-align: left;
-  transition: all 0.2s ease;
-}
-
-.tab-button.active {
-  background: #007bff;
-  color: white;
-}
-
-.tab-button:hover {
-  background: #ececec;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.main-content {
-  flex: 1;
-  min-width: 0;
-  padding: 12px;
-}
 
 .section {
   border: 1px solid #ddd;
@@ -1028,25 +985,7 @@ button:hover {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-  margin-top: 10px;
-}
-
-.controls input {
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  font-size: 12px;
-}
-
-.controls input:focus {
-  border-color: #999;
-  outline: none;
-}
+z
 
 #pdfInput,
 #searchInput {
@@ -1122,27 +1061,70 @@ button:hover {
 }
 
 .popup-content {
-  background: #fff;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 90%;
-  max-height: 90%;
-  overflow: auto;
-  position: relative;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+    position: relative;
+    margin: 0 auto; /* Căn giữa popup */
 }
 
 .close-popup {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: #ff4444;
-  color: #fff;
-  border: none;
-  border-radius: 3px;
-  padding: 4px 8 Overall, dựa trên file `styles.css` bạn cung cấp và yêu cầu của bạn, tôi sẽ sửa đổi CSS để bỏ trạng thái cố định của các tab và cho phép chúng cuộn cùng trang. Dưới đây là file `styles.css` đã được cập nhật với các thay đổi cần thiết:
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ff4444;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 5px 10px;
+    font-size: 16px;
+    line-height: 1;
+}
 
-<xaiArtifact artifact_id="0d88e7c3-dfb0-4ea0-a39c-c74622bd7e46" artifact_version_id="897698a3-f700-463e-930c-df6a0e587498" title="styles.css" contentType="text/css">
-* {
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.log-container {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.log-table th, .log-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.log-table th {
+    background-color: #f2f2f2;
+}
+
+.log-controls {
+    margin-bottom: 10px;
+}
+
+.log-controls button {
+    margin-right: 10px;
+} {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -1654,6 +1636,81 @@ a[onclick]:hover {
 
 .btn-manual-invoice .icon {
     font-size: 16px;
+}
+
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.popup-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.popup-content h3 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.popup-content label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.popup-content input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.popup-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.popup-actions button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.popup-actions button:first-child {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.popup-actions button:first-child:hover {
+    background-color: #45a049;
+}
+
+.popup-actions button:last-child {
+    background-color: #f44336;
+    color: white;
+}
+
+.popup-actions button:last-child:hover {
+    background-color: #da190b;
 }
 /* ... (giữ nguyên các phần CSS khác như .header-total, .sidebar, .tabs, v.v.) ... */
 

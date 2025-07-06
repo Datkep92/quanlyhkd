@@ -13,21 +13,9 @@
 <body>
   <div class="container">
    <div class="sidebar">
-  <button onclick="clearAllData()">🗑️ Xóa dữ liệu</button>
   <input type="file" id="pdfInput" accept="application/pdf" multiple>
   <div id="status"></div>
   <input type="text" id="searchInput" placeholder="Tìm kiếm Hộ Kinh Doanh...">
-  
-  <!-- Các tab di chuyển vào đây -->
-  <button class="tab-button active" onclick="showTab('inventoryTab', this, selectedBusinessId)">Tồn kho</button>
-  <button class="tab-button" onclick="showTab('invoicesTab', this, selectedBusinessId)">Danh sách hóa đơn</button>
-  <button class="tab-button" onclick="showTab('priceListTab', this, selectedBusinessId)">Bảng giá bán</button>
-  <button class="tab-button" onclick="showTab('exportHistoryTab', this, selectedBusinessId)">Lịch sử xuất hàng</button>
-  <button class="tab-button" onclick="showTab('exportTab', this, selectedBusinessId)">Xuất hàng hóa</button>
-  <button class="tab-button" onclick="alert('Tính năng Báo cáo thuế đang xây dựng. Coming soon!')">📊 Báo cáo thuế</button>
-      <input type="text" id="githubToken" placeholder="Nhập GitHub Token">
- <button class="save-token-button" onclick="saveGitHubToken()">💾</button>
-
   
   <div id="searchResults"></div>
   <div id="businessList"></div>
