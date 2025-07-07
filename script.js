@@ -5595,14 +5595,18 @@ document.querySelectorAll('.tab-button').forEach(button => {
 // Modify the invoice table rendering to replace the export Excel button with a delete invoice button
 function showBusinessDetails(businessId) {
     try {
-        // Cập nhật lastActiveBusinessId khi xem chi tiết HKD
+        // Cập nhật lastActiveBusinessId
         lastActiveBusinessId = businessId;
+        selectedBusinessId = businessId;
         localStorage.setItem('lastActiveBusinessId', businessId);
         
         const business = businesses.find(b => b.id === businessId);
-        if (!business) return;
-        selectedBusinessId = businessId;
-        updateBusinessList(businessId);
+        if (!business) {
+            console.error('Không tìm thấy HKD với ID:', businessId);
+            return;
+        }
+
+        updateBusinessList(businessId); // Cập nhật danh sách HKD với trạng thái active
 
         const inventorySummary = getBusinessInventorySummary(businessId);
 
@@ -5613,24 +5617,20 @@ function showBusinessDetails(businessId) {
                     <span><strong>MST:</strong> ${business.taxCode}</span>
                     <span><strong>Địa chỉ:</strong> ${business.address}</span>
                 </div>
-                <!-- Thêm nút tạo hóa đơn thủ công vào đây -->
                 <div class="business-actions">
-                    
-                <button class="tab-button active" onclick="showTab('inventoryTab', this, selectedBusinessId)">Tồn kho</button>
-                <button class="tab-button" onclick="showTab('invoicesTab', this, selectedBusinessId)">Hóa đơn</button>
-                <button class="tab-button" onclick="showTab('priceListTab', this, selectedBusinessId)">Giá bán</button>
-                <button class="tab-button" onclick="showTab('exportHistoryTab', this, selectedBusinessId)">Lịch sử xuất hàng</button>
-                <button class="tab-button" onclick="showTab('exportTab', this, selectedBusinessId)">Xuất hàng tự động</button>
-<button onclick="showManualInvoicePopup('${businessId}')" class="btn-manual-invoice">
+                    <button class="tab-button active" data-target="inventoryTab" onclick="showTab('inventoryTab', this, '${businessId}')">Tồn kho</button>
+                    <button class="tab-button" data-target="invoicesTab" onclick="showTab('invoicesTab', this, '${businessId}')">Hóa đơn</button>
+                    <button class="tab-button" data-target="priceListTab" onclick="showTab('priceListTab', this, '${businessId}')">Giá bán</button>
+                    <button class="tab-button" data-target="exportHistoryTab" onclick="showTab('exportHistoryTab', this, '${businessId}')">Lịch sử xuất hàng</button>
+                    <button class="tab-button" data-target="exportTab" onclick="showTab('exportTab', this, '${businessId}')">Xuất hàng tự động</button>
+                    <button onclick="showManualInvoicePopup('${businessId}')" class="btn-manual-invoice">
                         <span class="icon">📝</span> Xuất hàng thủ công
                     </button>
-                <button class="tab-button" onclick="showExportJsonPopup()">📤 Lưu GIST</button>
-                <button class="tab-button" onclick="importFromGist()">📥 Nhập GIST</button>
-                <input type="file" id="jsonInput" accept=".json" style="display: none;" onchange="importFromJSON(event)">
-
+                    <button class="tab-button" onclick="showExportJsonPopup()">📤 Lưu GIST</button>
+                    <button class="tab-button" onclick="importFromGist()">📥 Nhập GIST</button>
+                    <input type="file" id="jsonInput" accept=".json" style="display: none;" onchange="importFromJSON(event)">
                 </div>
             </div>
-            
             <div class="summary-cards">
                 <div class="summary-card">
                     <div class="card-icon">📦</div>
@@ -5668,22 +5668,22 @@ function showBusinessDetails(businessId) {
             tab.classList.add('hidden');
         });
 
-        // Reset active tab button
-        document.querySelectorAll('.horizontal-tabs .tab-button').forEach(btn => {
-            btn.classList.remove('active');
-        });
+        // Hiển thị tab mặc định (Tồn kho)
+        const inventoryTab = document.getElementById('inventoryTab');
+        if (inventoryTab) {
+            inventoryTab.classList.remove('hidden');
+            showBusinessInventory(businessId);
+        }
 
-        // Mặc định hiển thị tab Tồn kho
-        const firstTab = document.querySelector('.horizontal-tabs .tab-button');
-        if (firstTab) {
-            firstTab.classList.add('active');
-            showTab('inventoryTab', firstTab, businessId);
+        // Đặt trạng thái active cho nút tab Tồn kho
+        const firstTabButton = document.querySelector('.tab-button[data-target="inventoryTab"]');
+        if (firstTabButton) {
+            firstTabButton.classList.add('active');
         }
     } catch (e) {
         console.error('Lỗi showBusinessDetails:', e);
     }
 }
-
 // New function to handle invoice deletion
 function deleteInvoice(invoiceId, businessId) {
     try {
