@@ -21,7 +21,12 @@ let sessionHistory = [];
 let undoStack = [];
 const MAX_UNDO_STEPS = 20;
 const SESSION_HISTORY_KEY = 'lastSessionState';
+
 // =============================================
+function setActiveBusiness(businessId) {
+    lastActiveBusinessId = businessId;
+    localStorage.setItem('lastActiveBusinessId', businessId);
+}
 // 2. HÀM TIỆN ÍCH CHUNG
 // =============================================
 function saveCurrentState() {
@@ -36,6 +41,7 @@ function saveCurrentState() {
 
     // Lưu vào localStorage để khôi phục sau này
     localStorage.setItem(SESSION_HISTORY_KEY, JSON.stringify(currentState));
+    localStorage.setItem('lastActiveBusinessId', lastActiveBusinessId); // Lưu riêng lastActiveBusinessId
 
     // Thêm vào undo stack (giới hạn 20 bước)
     undoStack.unshift(currentState);
@@ -202,16 +208,26 @@ try {
     invoices = JSON.parse(localStorage.getItem('invoices')) || [];
     inventory = JSON.parse(localStorage.getItem('inventory')) || [];
     exportedInvoices = JSON.parse(localStorage.getItem('exportedInvoices')) || [];
-    activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || []; // Thêm dòng này
-
-
-    // Khôi phục HKD đang làm việc gần nhất nếu có
-    const lastBusiness = businesses[0]; // Mặc định lấy HKD đầu tiên
-    if (lastBusiness) {
-        lastActiveBusinessId = lastBusiness.id;
+    activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
+    
+    // Khôi phục HKD đang làm việc gần nhất từ localStorage
+    lastActiveBusinessId = localStorage.getItem('lastActiveBusinessId');
+    
+    // Nếu không có lastActiveBusinessId, lấy HKD đầu tiên
+    if (!lastActiveBusinessId && businesses.length > 0) {
+        lastActiveBusinessId = businesses[0].id;
     }
+    
     // Lưu trạng thái ban đầu
     saveCurrentState();
+    
+    // Cập nhật giao diện nếu có HKD đang làm việc
+    if (lastActiveBusinessId) {
+        updateBusinessList(lastActiveBusinessId);
+        showBusinessDetails(lastActiveBusinessId);
+        showPriceList(lastActiveBusinessId);
+        showExportHistory(lastActiveBusinessId);
+    }
 } catch (e) {
     console.error('Lỗi khi đọc localStorage:', e);
 }
@@ -692,7 +708,7 @@ function updateBusinessList(selectedId = null) {
         });
 
         businessList.innerHTML = '<ul>' + sortedBusinesses.map(b => `
-            <li class="${b.id === selectedId ? 'active' : ''}" 
+            <li class="${b.id === lastActiveBusinessId ? 'active' : ''}" 
                 onclick="showBusinessDetails('${b.id}'); updateSelectedBusinessId('${b.id}')">
                 ${b.name} (MST: ${b.taxCode}) 
                 <button onclick="deleteBusiness('${b.id}', event)">Xóa</button>
@@ -704,6 +720,7 @@ function updateBusinessList(selectedId = null) {
         console.error('Lỗi updateBusinessList:', e);
     }
 }
+
 function updateSelectedBusinessId(businessId) {
     selectedBusinessId = businessId;
     console.log('Selected business ID updated to:', selectedBusinessId); // For debugging
@@ -2689,7 +2706,7 @@ function generateExportItems(businessId) {
             return;
         }
 
-        const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 50000;
+        const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 1000000;
         const tolerance = targetAmount * 0.10;
         const minAmount = targetAmount - tolerance;
         const maxAmount = targetAmount + tolerance;
@@ -3457,7 +3474,7 @@ function showExportTab(businessId) {
                     
                     <div class="amount-controls">
                         <label>Số tiền mục tiêu (VND):</label>
-                        <input type="number" id="targetAmount" min="1000" value="50000" oninput="validateTargetAmount('${businessId}')">
+                        <input type="number" id="targetAmount" min="10" value="1000000" oninput="validateTargetAmount('${businessId}')">
                         <button onclick="generateRandomExportItems('${businessId}')">🎲 Tạo ngẫu nhiên</button>
                         <button onclick="saveExport('${businessId}')">💾 Lưu xuất hàng</button>
                         <button onclick="exportToExcel('${businessId}')">📤 Xuất Excel</button>
@@ -3505,9 +3522,9 @@ function generateRandomExportItems(businessId) {
             return;
         }
 
-        const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 50000;
+        const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 1000000;
         if (targetAmount < 1000) {
-            document.getElementById('targetAmount').value = 1000;
+            document.getElementById('targetAmount').value = 0;
             return;
         }
 
@@ -3799,6 +3816,12 @@ function addUtilityButtons() {
 document.addEventListener('DOMContentLoaded', () => {
     addUtilityButtons();
     updateBusinessList();
+    
+    // Nếu có lastActiveBusinessId, hiển thị tab inventory mặc định
+    if (lastActiveBusinessId) {
+        showTab('inventoryTab', null, lastActiveBusinessId);
+    }
+    
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', () => {
@@ -3811,7 +3834,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 ` : '<p>Không tìm thấy kết quả.</p>';
             }
         });
-
     }
 });
 // Thêm vào phần HÀM TIỆN ÍCH CHUNG
@@ -4098,7 +4120,7 @@ function importFromGist() {
 // =============================================
 // 7. QUẢN LÝ XUẤT HÀNG (EXPORT) - Bổ sung các hàm còn thiếu
 // =============================================
-
+/*
 // 🎲 Tạo danh sách xuất ngẫu nhiên
 function generateExportItems(businessId) {
     try {
@@ -4114,10 +4136,10 @@ function generateExportItems(businessId) {
             return;
         }
 
-        const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 50000;
+        const targetAmount = normalizeNumber(document.getElementById('targetAmount').value) || 1000000;
         if (targetAmount < 1000) {
             //alert('Số tiền mục tiêu phải lớn hơn hoặc bằng 1,000 VND!');
-            document.getElementById('targetAmount').value = 1000;
+            document.getElementById('targetAmount').value = 0;
             return;
         }
         const tolerance = targetAmount * 0.10;
@@ -4164,6 +4186,7 @@ function generateExportItems(businessId) {
         alert('Lỗi khi tạo danh sách xuất: ' + e.message);
     }
 }
+*/
 function showPreviewModal(businessId) {
     const tbody = document.getElementById('exportItemsBodyContent');
     if (!tbody || tbody.querySelectorAll('tr').length === 0) {
@@ -5572,18 +5595,12 @@ document.querySelectorAll('.tab-button').forEach(button => {
 // Modify the invoice table rendering to replace the export Excel button with a delete invoice button
 function showBusinessDetails(businessId) {
     try {
-        // Cập nhật HKD đang làm việc
+        // Cập nhật lastActiveBusinessId khi xem chi tiết HKD
         lastActiveBusinessId = businessId;
-
-        const businessDetails = document.getElementById('businessDetails');
-        if (!businessDetails) return;
-
+        localStorage.setItem('lastActiveBusinessId', businessId);
+        
         const business = businesses.find(b => b.id === businessId);
-        if (!business) {
-            businessDetails.innerHTML = '<p>Không tìm thấy Hộ Kinh Doanh.</p>';
-            return;
-        }
-
+        if (!business) return;
         selectedBusinessId = businessId;
         updateBusinessList(businessId);
 
@@ -6203,3 +6220,4 @@ function closeUpdateSellingPricePopup() {
     if (popup) popup.remove();
 }
 ///////////////////////////////
+
